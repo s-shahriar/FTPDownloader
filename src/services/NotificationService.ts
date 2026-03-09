@@ -24,6 +24,8 @@ class NotificationService {
   private permissionGranted: boolean = false;
   private persistentNotificationId: string | null = null;
   private activeDownloads: Map<string, DownloadInfo> = new Map();
+  private lastNotificationUpdate: number = 0;
+  private notificationUpdateThrottle: number = 1500; // Update notification max once every 1.5 seconds
 
   private constructor() {}
 
@@ -72,15 +74,20 @@ class NotificationService {
   async showDownloadStarted(downloadId: string, filename: string): Promise<void> {
     if (!this.permissionGranted) return;
 
-    this.activeDownloads.set(downloadId, {
-      id: downloadId,
-      filename,
-      progress: 0,
-      speed: 0,
-      status: 'downloading',
-    });
-
-    await this.updatePersistentNotification();
+    // Show simple one-time notification
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⬇️ Download Started',
+          body: filename,
+          data: { type: 'download_started', downloadId },
+          categoryIdentifier: 'downloads',
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.error('Failed to show start notification:', error);
+    }
   }
 
   async updateDownloadProgress(
@@ -89,39 +96,21 @@ class NotificationService {
     progress: number,
     speed: number
   ): Promise<void> {
-    if (!this.permissionGranted || Platform.OS === 'web') return;
-
-    const info = this.activeDownloads.get(downloadId);
-    if (info) {
-      info.progress = progress;
-      info.speed = speed;
-      info.filename = filename;
-      this.activeDownloads.set(downloadId, info);
-    } else {
-      this.activeDownloads.set(downloadId, {
-        id: downloadId,
-        filename,
-        progress,
-        speed,
-        status: 'downloading',
-      });
-    }
-
-    await this.updatePersistentNotification();
+    // DO NOTHING - we don't show progress notifications anymore
+    // Only show notifications for events: started, completed, failed, paused, resumed
+    return;
   }
 
   async showDownloadCompleted(downloadId: string, filename: string): Promise<void> {
     if (!this.permissionGranted) return;
 
-    this.activeDownloads.delete(downloadId);
-
-    // Show completion notification briefly
+    // Show completion notification
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '✓ Download Complete',
           body: filename,
-          data: { type: 'download_completed' },
+          data: { type: 'download_completed', downloadId },
           categoryIdentifier: 'downloads',
         },
         trigger: null,
@@ -129,15 +118,10 @@ class NotificationService {
     } catch (error) {
       console.error('Failed to show completion notification:', error);
     }
-
-    // Update or dismiss persistent notification
-    await this.updatePersistentNotification();
   }
 
   async showDownloadFailed(downloadId: string, filename: string, error: string): Promise<void> {
     if (!this.permissionGranted) return;
-
-    this.activeDownloads.delete(downloadId);
 
     // Show error notification
     try {
@@ -145,7 +129,7 @@ class NotificationService {
         content: {
           title: '✗ Download Failed',
           body: `${filename}: ${error}`,
-          data: { type: 'download_failed' },
+          data: { type: 'download_failed', downloadId },
           categoryIdentifier: 'downloads',
         },
         trigger: null,
@@ -153,13 +137,47 @@ class NotificationService {
     } catch (error) {
       console.error('Failed to show failure notification:', error);
     }
+  }
 
-    await this.updatePersistentNotification();
+  async showDownloadPaused(downloadId: string, filename: string): Promise<void> {
+    if (!this.permissionGranted) return;
+
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⏸️ Download Paused',
+          body: filename,
+          data: { type: 'download_paused', downloadId },
+          categoryIdentifier: 'downloads',
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.error('Failed to show pause notification:', error);
+    }
+  }
+
+  async showDownloadResumed(downloadId: string, filename: string): Promise<void> {
+    if (!this.permissionGranted) return;
+
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '▶️ Download Resumed',
+          body: filename,
+          data: { type: 'download_resumed', downloadId },
+          categoryIdentifier: 'downloads',
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.error('Failed to show resume notification:', error);
+    }
   }
 
   async dismissNotification(downloadId: string): Promise<void> {
-    this.activeDownloads.delete(downloadId);
-    await this.updatePersistentNotification();
+    // No longer needed - we don't have persistent notifications
+    return;
   }
 
   async dismissAllNotifications(): Promise<void> {
@@ -174,24 +192,34 @@ class NotificationService {
 
   /**
    * Chrome-style persistent notification showing all active downloads
+   * Uses a single notification that updates in place (like Chrome's download manager)
    */
   private async updatePersistentNotification(): Promise<void> {
     if (!this.permissionGranted || Platform.OS === 'web') return;
 
     const activeCount = this.activeDownloads.size;
 
-    // Dismiss old persistent notification if exists
-    if (this.persistentNotificationId) {
-      try {
-        await Notifications.dismissNotificationAsync(this.persistentNotificationId);
-      } catch {}
-      this.persistentNotificationId = null;
-    }
-
-    // No active downloads - don't show notification
+    // No active downloads - dismiss notification
     if (activeCount === 0) {
+      if (this.persistentNotificationId) {
+        try {
+          await Notifications.dismissNotificationAsync(this.persistentNotificationId);
+        } catch {}
+        this.persistentNotificationId = null;
+      }
+      this.lastNotificationUpdate = 0; // Reset throttle
       return;
     }
+
+    // CRITICAL: Throttle notification updates to prevent notification bombing
+    // When multiple downloads are active, each can trigger updates at different times
+    // This ensures we only update the notification once every 1.5 seconds max
+    const now = Date.now();
+    if (now - this.lastNotificationUpdate < this.notificationUpdateThrottle) {
+      // Too soon - skip this update
+      return;
+    }
+    this.lastNotificationUpdate = now;
 
     try {
       // Calculate aggregate stats
@@ -215,15 +243,43 @@ class NotificationService {
 
       const body = `${avgProgress}%${speedStr ? ` • ${speedStr}` : ''}`;
 
-      // Show persistent notification
-      this.persistentNotificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          data: { type: 'download_progress', count: activeCount },
-          categoryIdentifier: 'downloads',
-          sticky: true, // Make it persistent
+      // On Android, using the same tag will update the existing notification in place
+      const notificationContent: any = {
+        title,
+        body,
+        data: {
+          type: 'download_progress',
+          count: activeCount,
         },
+        categoryIdentifier: 'downloads',
+        sticky: true,
+        priority: Platform.OS === 'android' ? Notifications.AndroidNotificationPriority.LOW : undefined,
+      };
+
+      // Android-specific: Add tag and progress bar to update notification in place
+      if (Platform.OS === 'android') {
+        notificationContent.sound = null;
+        notificationContent.vibrate = false;
+        notificationContent.android = {
+          channelId: 'downloads',
+          tag: 'ftp_downloads', // CRITICAL: Same tag makes Android replace notification instead of creating new one
+          priority: Notifications.AndroidNotificationPriority.LOW,
+          progress: {
+            max: 100,
+            current: avgProgress,
+            indeterminate: false,
+          },
+          ongoing: true, // Makes it non-dismissible while downloading
+          autoCancel: false,
+        };
+      }
+
+      // DO NOT dismiss old notification - Android will replace it automatically via tag
+      // Dismissing causes multiple separate notifications (notification bombing!)
+
+      // Create/update notification - Android replaces old one with same tag
+      this.persistentNotificationId = await Notifications.scheduleNotificationAsync({
+        content: notificationContent,
         trigger: null,
       });
     } catch (error) {

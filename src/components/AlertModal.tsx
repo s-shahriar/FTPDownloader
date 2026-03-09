@@ -49,27 +49,57 @@ export function showAlert(
 export function AlertHost() {
   const [config, setConfig] = useState<AlertConfig | null>(null);
   const [visible, setVisible] = useState(false);
-  const scale = useRef(new Animated.Value(0.9)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     _alertListener = (cfg) => {
       setConfig(cfg);
       setVisible(true);
-      scale.setValue(0.9);
+      scale.setValue(0.95);
       opacity.setValue(0);
+      backdropOpacity.setValue(0);
       Animated.parallel([
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }),
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 12,
+          velocity: 2,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
       ]).start();
     };
     return () => { _alertListener = null; };
-  }, [scale, opacity]);
+  }, [scale, opacity, backdropOpacity]);
 
   const handlePress = (button: AlertButton) => {
     Animated.parallel([
-      Animated.timing(scale, { toValue: 0.9, duration: 150, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(scale, {
+        toValue: 0.95,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       setVisible(false);
       setConfig(null);
@@ -116,15 +146,16 @@ export function AlertHost() {
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={handleBackdrop}>
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={handleBackdrop}
-      >
-        <Animated.View
-          style={[styles.dialog, { transform: [{ scale }], opacity }]}
+      <Animated.View style={[styles.overlayContainer, { opacity: backdropOpacity }]}>
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={handleBackdrop}
         >
-          <TouchableOpacity activeOpacity={1}>
+          <Animated.View
+            style={[styles.dialog, { transform: [{ scale }], opacity }]}
+          >
+            <TouchableOpacity activeOpacity={1}>
             {/* Icon */}
             <View style={[styles.iconWrap, { backgroundColor: `${icon.color}12` }]}>
               <MaterialIcons name={icon.name} size={28} color={icon.color} />
@@ -173,14 +204,18 @@ export function AlertHost() {
           </TouchableOpacity>
         </Animated.View>
       </TouchableOpacity>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  overlayContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  overlay: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,

@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 import { AppProvider, useApp } from './src/contexts/AppContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SearchResultsScreen } from './src/screens/SearchResultsScreen';
@@ -13,6 +14,9 @@ import { ToastHost } from './src/components/Toast';
 import { AlertHost } from './src/components/AlertModal';
 import { DownloadNotificationBar } from './src/components/DownloadNotificationBar';
 import { CustomSplashScreen } from './src/components/CustomSplashScreen';
+
+// Prevent native splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +34,13 @@ function PermissionScreen() {
 function AppNavigator() {
   const { isLoading, storagePermissionGranted } = useApp();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
+  // Hide native splash screen when app is ready
+  useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
 
   if (isLoading) {
     return <CustomSplashScreen />;

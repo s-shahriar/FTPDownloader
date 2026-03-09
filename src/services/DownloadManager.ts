@@ -190,12 +190,12 @@ export class DownloadManager {
     const tracker = new SpeedTracker();
     this.speedTrackers.set(id, tracker);
 
-    // Download directly to final location instead of cache to avoid move issues
-    const finalPath = await this.getFinalDownloadPath(item.name);
+    // Step 1: Download to cache directory (always writable)
+    const tempPath = `${FileSystem.cacheDirectory}${item.name}`;
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.url,
-      finalPath,
+      tempPath,
       {},
       (progress) => {
         this.handleProgress(id, progress);
@@ -206,7 +206,7 @@ export class DownloadManager {
 
     // Mark as downloading
     item.status = DOWNLOAD_STATUS.DOWNLOADING;
-    item.localPath = finalPath;
+    item.localPath = tempPath;
     item.startTime = Date.now();
     item.error = undefined;
     this.downloads.set(id, item);
@@ -219,12 +219,15 @@ export class DownloadManager {
       const result = await downloadResumable.downloadAsync();
 
       if (result && result.uri) {
+        // Step 2: Move from cache to public storage using MediaLibrary
+        const publicUri = await this.moveToPublicStorage(result.uri, item.name);
+
         item.status = DOWNLOAD_STATUS.COMPLETED;
         item.progress = 100;
         item.endTime = Date.now();
         item.speed = 0;
         item.timeRemaining = 0;
-        item.localPath = result.uri;
+        item.localPath = publicUri;
 
         // Show completion notification
         await notificationService.showDownloadCompleted(id, item.name);
@@ -270,20 +273,58 @@ export class DownloadManager {
   }
 
   /**
-   * Get final download path - tries multiple locations
-   * Returns a writable path where downloads can be saved and deleted
+   * Move downloaded file from cache to Pictures/FTPDownloader using MediaLibrary
+   * This makes files accessible via gallery and file managers
    */
-  private async getFinalDownloadPath(filename: string): Promise<string> {
-    // Approach 1: Use cache directory (always writable, reliable)
-    // Files here are accessible and won't be deleted unless user clears app cache
-    const cachePath = `${FileSystem.cacheDirectory}${filename}`;
-    console.log(`✓ Using cache directory: ${cachePath}`);
-    return cachePath;
+  private async moveToPublicStorage(cacheUri: string, filename: string): Promise<string> {
+    try {
+      console.log('📦 Moving file to Pictures/FTPDownloader:', filename);
 
-    // Note: On Android 10+, there's no reliable way to write to public Download folder
-    // without using MediaStore or SAF. Cache directory is the best option for now.
-    // Files will be visible via file manager at:
-    // /data/data/com.ftpdownloader.app/cache/
+      // Save to media library (Pictures/Movies/Music depending on file type)
+      const asset = await MediaLibrary.createAssetAsync(cacheUri);
+      console.log('✓ Asset created:', asset.id);
+
+      // Create/get FTPDownloader album
+      const albumName = 'FTPDownloader';
+      let album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) {
+        // Create album with the asset
+        album = await MediaLibrary.createAlbumAsync(albumName, asset, false);
+        console.log('✓ Created album:', albumName);
+      } else {
+        // Add to existing album
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+        console.log('✓ Added to album:', albumName);
+      }
+
+      // Get asset URI - handle case where getAssetInfoAsync might return null
+      let publicUri: string;
+      try {
+        const assetInfo = await MediaLibrary.getAssetInfoAsync(asset);
+        publicUri = assetInfo?.localUri || assetInfo?.uri || asset.uri;
+      } catch (e) {
+        // Fallback to asset.uri if getAssetInfoAsync fails
+        publicUri = asset.uri;
+      }
+
+      console.log('✓ File saved to:', publicUri);
+      console.log('📂 Access via: Pictures/FTPDownloader album in gallery');
+
+      // Clean up cache file
+      try {
+        await FileSystem.deleteAsync(cacheUri, { idempotent: true });
+        console.log('✓ Cleaned up cache');
+      } catch (e) {
+        console.log('⚠️ Cache cleanup failed:', e);
+      }
+
+      return publicUri;
+    } catch (error) {
+      console.error('❌ Failed to save to gallery:', error);
+      // Keep cache file as fallback
+      return cacheUri;
+    }
   }
 
 
@@ -459,8 +500,8 @@ export class DownloadManager {
         this.downloads.set(id, item);
         this.speedTrackers.delete(id);
         this.lastNotificationTime.delete(id);
-        // Dismiss notification for paused download
-        await notificationService.dismissNotification(id);
+        // Show paused notification
+        await notificationService.showDownloadPaused(id, item.name);
         await this.saveDownloads();
         this.processQueue();
       } catch (error) {
@@ -499,7 +540,7 @@ export class DownloadManager {
           await this.saveDownloads();
 
           // Show resuming notification
-          notificationService.showDownloadStarted(id, item.name);
+          notificationService.showDownloadResumed(id, item.name);
 
           task.resumeAsync().then(result => {
             if (result && result.uri) {

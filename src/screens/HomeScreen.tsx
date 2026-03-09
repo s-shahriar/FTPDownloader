@@ -128,8 +128,7 @@ export function HomeScreen({ navigation }: any) {
   const handleCategorySelect = (category: any) => {
     dispatch({ type: 'SET_CATEGORY', payload: category });
     setSearchResults([]);
-    setYear('');
-    setSearchQuery('');
+    // Keep film name and year when category changes - don't reset them
   };
 
   return (

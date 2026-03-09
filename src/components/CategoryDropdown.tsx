@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
   Platform,
+  Animated,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Category } from '../types';
@@ -24,10 +25,50 @@ export function CategoryDropdown({
   onSelect,
 }: CategoryDropdownProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isVisible) {
+      // Animate in
+      slideAnim.setValue(300);
+      fadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isVisible]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsVisible(false);
+    });
+  };
 
   const handleSelect = (category: Category) => {
     onSelect(category);
-    setIsVisible(false);
+    handleClose();
   };
 
   const renderCategory = ({ item }: { item: Category }) => {
@@ -91,17 +132,31 @@ export function CategoryDropdown({
 
       <Modal
         visible={isVisible}
-        animationType="slide"
+        animationType="none"
         transparent
-        onRequestClose={() => setIsVisible(false)}
+        onRequestClose={handleClose}
+        statusBarTranslucent
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.backdrop}
+            activeOpacity={1}
+            onPress={handleClose}
+          />
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            {/* Handle bar */}
+            <View style={styles.handleBar} />
+
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Category</Text>
               <TouchableOpacity
                 style={styles.closeBtn}
-                onPress={() => setIsVisible(false)}
+                onPress={handleClose}
               >
                 <MaterialIcons name="close" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
@@ -115,8 +170,8 @@ export function CategoryDropdown({
               contentContainerStyle={styles.listContainer}
               showsVerticalScrollIndicator={false}
             />
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
     </View>
   );
@@ -173,8 +228,21 @@ const styles = StyleSheet.create({
   // ── Modal ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.textDim,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+    opacity: 0.4,
   },
   modalContainer: {
     backgroundColor: COLORS.surface,
@@ -188,6 +256,7 @@ const styles = StyleSheet.create({
       web: {
         boxShadow: '0 -10px 40px rgba(0,0,0,0.1)' as any,
       },
+      android: { elevation: 8 },
     }),
   },
   modalHeader: {
