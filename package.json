@@ -1,0 +1,49 @@
+{
+  "name": "ftpdownloader",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "proxy": "node proxy-server.js",
+    "web:full": "npm run proxy & expo start --web",
+    "build:android": "eas build --platform android --profile preview --local",
+    "build:android:all": "eas build --platform android --profile preview-all --local",
+    "build:android:x86": "eas build --platform android --profile preview-x86 --local"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^7.15.5",
+    "@react-navigation/native": "^7.1.33",
+    "@react-navigation/stack": "^7.8.4",
+    "expo": "~55.0.5",
+    "expo-background-fetch": "~55.0.9",
+    "expo-clipboard": "~55.0.8",
+    "expo-constants": "~55.0.7",
+    "expo-file-system": "~55.0.10",
+    "expo-media-library": "~55.0.9",
+    "expo-permissions": "^14.4.0",
+    "expo-sqlite": "~55.0.10",
+    "expo-status-bar": "~55.0.4",
+    "expo-task-manager": "~55.0.9",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.2",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-paper": "^5.15.0",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-web": "^0.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

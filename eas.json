@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 7.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a",
+        "GRADLE_OPTS": "-Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+      }
+    },
+    "preview-all": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "GRADLE_OPTS": "-Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+      }
+    },
+    "preview-x86": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "x86_64",
+        "GRADLE_OPTS": "-Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  }
+}

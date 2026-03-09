@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "FTPDownloader",
+    "slug": "FTPDownloader",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#667eea"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryAddUsageDescription": "Allow FTPDownloader to save downloaded files to your photo library",
+        "NSPhotoLibraryUsageDescription": "Allow FTPDownloader to access your photo library to save downloaded files"
+      }
+    },
+    "android": {
+      "package": "com.ftpdownloader.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#17171e",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    },
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow FTPDownloader to save downloaded files to your device",
+          "savePhotosPermission": "Allow FTPDownloader to save downloaded files to your device",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-file-system",
+        {
+          "intentFilters": [
+            {
+              "action": "android.intent.action.VIEW",
+              "data": [
+                {
+                  "scheme": "http",
+                  "host": "*",
+                  "pathPattern": ".*\\.mkv"
+                },
+                {
+                  "scheme": "http",
+                  "host": "*",
+                  "pathPattern": ".*\\.mp4"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    ]
+  }
+}
