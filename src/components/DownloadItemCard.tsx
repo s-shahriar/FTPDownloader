@@ -259,14 +259,6 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
       <View style={styles.actionsContainer}>{renderActions()}</View>
     </View>
   );
-}, (prev, next) => {
-  const p = prev.download;
-  const n = next.download;
-  return p.status === n.status &&
-    p.progress === n.progress &&
-    Math.round(p.speed / 1024) === Math.round(n.speed / 1024) &&
-    p.error === n.error &&
-    p.name === n.name;
 });
 
 const styles = StyleSheet.create({

@@ -7,7 +7,7 @@ import { AppProvider, useApp } from './src/contexts/AppContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SearchResultsScreen } from './src/screens/SearchResultsScreen';
 import { DownloadsScreen } from './src/screens/DownloadsScreen';
-import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from './src/constants';
 import { ToastHost } from './src/components/Toast';
 import { AlertHost } from './src/components/AlertModal';
@@ -32,7 +32,7 @@ function AppNavigator() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return <CustomSplashScreen />;
   }
 
   if (!storagePermissionGranted) {
@@ -72,17 +72,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.textSecondary,
-  },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',

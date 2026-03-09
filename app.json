@@ -11,6 +11,8 @@
       "resizeMode": "contain",
       "backgroundColor": "#f2f4f8"
     },
+    "backgroundColor": "#f2f4f8",
+    "primaryColor": "#3d7fff",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -21,6 +23,11 @@
     "android": {
       "package": "com.ftpdownloader.app",
       "versionCode": 1,
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#f2f4f8"
+      },
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -30,7 +37,8 @@
         "android.permission.ACCESS_MEDIA_LOCATION",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -47,6 +55,14 @@
       }
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#3d7fff",
+          "sounds": []
+        }
+      ],
       [
         "expo-media-library",
         {

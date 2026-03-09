@@ -26,13 +26,17 @@ export function DownloadsScreen({ navigation }: any) {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // Pause polling when modal is open to avoid choppy animations
+      if (showSettings) return;
+
       // Spread each download to create new references so React.memo can diff
-      const allDownloads = downloadManager.getAllDownloads().map(d => ({ ...d }));
+      // Reverse to show latest downloads at top
+      const allDownloads = downloadManager.getAllDownloads().map(d => ({ ...d })).reverse();
       dispatch({ type: 'SET_DOWNLOADS', payload: allDownloads });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [showSettings]);
 
   const filteredDownloads = downloads.filter(download => {
     if (filter === 'active') {

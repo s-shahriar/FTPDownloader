@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { DOWNLOAD_STATUS, DOWNLOAD_CONFIG, STORAGE_KEYS } from '../constants';
 import { DownloadItem, DownloadProgress } from '../types';
+import { notificationService } from './NotificationService';
 
 // ── Speed Tracker ──────────────────────────────────────────
 // Rolling-window speed calculator per download
@@ -53,6 +54,7 @@ export class DownloadManager {
   private queue: string[] = []; // ordered IDs of queued downloads
   private queueOrderCounter = 0;
   private defaultDownloadPath: string | null = null;
+  private lastNotificationTime: Map<string, number> = new Map(); // throttle notifications
 
   static getInstance(): DownloadManager {
     if (!DownloadManager.instance) {
@@ -188,12 +190,12 @@ export class DownloadManager {
     const tracker = new SpeedTracker();
     this.speedTrackers.set(id, tracker);
 
-    // Always download to internal cache first (reliable, no permission issues)
-    const cachePath = `${FileSystem.cacheDirectory}${item.name}`;
+    // Download directly to final location instead of cache to avoid move issues
+    const finalPath = await this.getFinalDownloadPath(item.name);
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.url,
-      cachePath,
+      finalPath,
       {},
       (progress) => {
         this.handleProgress(id, progress);
@@ -204,24 +206,28 @@ export class DownloadManager {
 
     // Mark as downloading
     item.status = DOWNLOAD_STATUS.DOWNLOADING;
-    item.localPath = cachePath;
+    item.localPath = finalPath;
     item.startTime = Date.now();
     item.error = undefined;
     this.downloads.set(id, item);
     this.saveDownloads();
 
+    // Show notification that download started
+    await notificationService.showDownloadStarted(id, item.name);
+
     try {
       const result = await downloadResumable.downloadAsync();
 
       if (result && result.uri) {
-        // Move to final location (Download/FTPDownloader or MediaLibrary)
-        await this.moveToFinalLocation(item, result.uri);
-
         item.status = DOWNLOAD_STATUS.COMPLETED;
         item.progress = 100;
         item.endTime = Date.now();
         item.speed = 0;
         item.timeRemaining = 0;
+        item.localPath = result.uri;
+
+        // Show completion notification
+        await notificationService.showDownloadCompleted(id, item.name);
       } else {
         throw new Error('Download failed — no result');
       }
@@ -236,9 +242,16 @@ export class DownloadManager {
         if (isConnectionAbort) {
           item.status = DOWNLOAD_STATUS.PAUSED;
           item.error = undefined;
+          // Keep task for resume - DO NOT delete
+          // Dismiss notification for paused download
+          await notificationService.dismissNotification(id);
         } else {
           item.status = DOWNLOAD_STATUS.FAILED;
           item.error = errorMsg;
+          // Show failure notification
+          await notificationService.showDownloadFailed(id, item.name, errorMsg);
+          // Only delete task on failure
+          this.downloadTasks.delete(id);
         }
         item.speed = 0;
         item.timeRemaining = 0;
@@ -246,64 +259,33 @@ export class DownloadManager {
     } finally {
       this.downloads.set(id, item);
       this.speedTrackers.delete(id);
-      this.downloadTasks.delete(id);
+      this.lastNotificationTime.delete(id);
+      // Only delete task if completed or failed, keep it for paused
+      if (item.status === DOWNLOAD_STATUS.COMPLETED) {
+        this.downloadTasks.delete(id);
+      }
       this.saveDownloads();
       this.processQueue();
     }
   }
 
   /**
-   * Move completed download to final storage location.
-   * Tries: 1) External Download/FTPDownloader  2) MediaLibrary album  3) Keep in cache
+   * Get final download path - tries multiple locations
+   * Returns a writable path where downloads can be saved and deleted
    */
-  private async moveToFinalLocation(item: DownloadItem, sourceUri: string): Promise<void> {
-    if (Platform.OS !== 'android') {
-      item.localPath = sourceUri;
-      return;
-    }
+  private async getFinalDownloadPath(filename: string): Promise<string> {
+    // Approach 1: Use cache directory (always writable, reliable)
+    // Files here are accessible and won't be deleted unless user clears app cache
+    const cachePath = `${FileSystem.cacheDirectory}${filename}`;
+    console.log(`✓ Using cache directory: ${cachePath}`);
+    return cachePath;
 
-    // If user set a custom SAF path, use it as-is (files already download to cache)
-    if (this.defaultDownloadPath && this.defaultDownloadPath.startsWith('content://')) {
-      // For SAF URIs, fall back to MediaLibrary album approach
-      await this.saveToMediaLibraryAlbum(item, sourceUri);
-      return;
-    }
-
-    // Approach 1: Direct move to /Download/FTPDownloader/
-    try {
-      const extDir = 'file:///storage/emulated/0/Download/FTPDownloader/';
-      await FileSystem.makeDirectoryAsync(extDir, { intermediates: true });
-      const dest = extDir + item.name;
-      await FileSystem.moveAsync({ from: sourceUri, to: dest });
-      item.localPath = dest;
-      return;
-    } catch {
-      // Scoped storage may block this — fall through
-    }
-
-    // Approach 2: MediaLibrary album
-    await this.saveToMediaLibraryAlbum(item, sourceUri);
+    // Note: On Android 10+, there's no reliable way to write to public Download folder
+    // without using MediaStore or SAF. Cache directory is the best option for now.
+    // Files will be visible via file manager at:
+    // /data/data/com.ftpdownloader.app/cache/
   }
 
-  private async saveToMediaLibraryAlbum(item: DownloadItem, sourceUri: string): Promise<void> {
-    try {
-      const asset = await MediaLibrary.createAssetAsync(sourceUri);
-      try {
-        const album = await MediaLibrary.getAlbumAsync('FTPDownloader');
-        if (album) {
-          await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-        } else {
-          await MediaLibrary.createAlbumAsync('FTPDownloader', asset, false);
-        }
-      } catch {
-        // Album creation failed — asset is still in DCIM, which is OK
-      }
-      item.localPath = asset.uri;
-    } catch (e) {
-      console.warn('MediaLibrary save failed, file stays in cache:', e);
-      item.localPath = sourceUri;
-    }
-  }
 
   /**
    * Web download — opens file URL directly in the browser via anchor click.
@@ -397,6 +379,14 @@ export class DownloadManager {
         timeRemaining: item.timeRemaining,
       });
     });
+
+    // Update notification (throttled to every 2 seconds)
+    const now = Date.now();
+    const lastTime = this.lastNotificationTime.get(id) || 0;
+    if (now - lastTime > 2000 && percentage > 0 && percentage < 100) {
+      this.lastNotificationTime.set(id, now);
+      notificationService.updateDownloadProgress(id, item.name, percentage, item.speed);
+    }
   }
 
   // ── Public API ─────────────────────────────────────────
@@ -468,6 +458,9 @@ export class DownloadManager {
         item.timeRemaining = 0;
         this.downloads.set(id, item);
         this.speedTrackers.delete(id);
+        this.lastNotificationTime.delete(id);
+        // Dismiss notification for paused download
+        await notificationService.dismissNotification(id);
         await this.saveDownloads();
         this.processQueue();
       } catch (error) {
@@ -505,20 +498,25 @@ export class DownloadManager {
           this.downloads.set(id, item);
           await this.saveDownloads();
 
+          // Show resuming notification
+          notificationService.showDownloadStarted(id, item.name);
+
           task.resumeAsync().then(result => {
             if (result && result.uri) {
-              this.moveToFinalLocation(item, result.uri).then(() => {
-                item.status = DOWNLOAD_STATUS.COMPLETED;
-                item.progress = 100;
-                item.endTime = Date.now();
-                item.speed = 0;
-                item.timeRemaining = 0;
-                this.downloads.set(id, item);
-                this.speedTrackers.delete(id);
-                this.downloadTasks.delete(id);
-                this.saveDownloads();
-                this.processQueue();
-              });
+              item.status = DOWNLOAD_STATUS.COMPLETED;
+              item.progress = 100;
+              item.endTime = Date.now();
+              item.speed = 0;
+              item.timeRemaining = 0;
+              item.localPath = result.uri;
+              this.downloads.set(id, item);
+              this.speedTrackers.delete(id);
+              this.downloadTasks.delete(id);
+              this.lastNotificationTime.delete(id);
+              this.saveDownloads();
+              this.processQueue();
+              // Show completion notification
+              notificationService.showDownloadCompleted(id, item.name);
             }
           }).catch((error: any) => {
             if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
@@ -529,8 +527,11 @@ export class DownloadManager {
               this.downloads.set(id, item);
               this.speedTrackers.delete(id);
               this.downloadTasks.delete(id);
+              this.lastNotificationTime.delete(id);
               this.saveDownloads();
               this.processQueue();
+              // Show failure notification
+              notificationService.showDownloadFailed(id, item.name, error.message || 'Unknown error');
             }
           });
         } catch (error) {
@@ -573,6 +574,8 @@ export class DownloadManager {
       item.speed = 0;
       item.timeRemaining = 0;
       this.downloads.set(id, item);
+      this.lastNotificationTime.delete(id);
+      await notificationService.dismissNotification(id);
       await this.saveDownloads();
       return;
     }
@@ -589,6 +592,8 @@ export class DownloadManager {
     this.downloads.set(id, item);
     this.downloadTasks.delete(id);
     this.speedTrackers.delete(id);
+    this.lastNotificationTime.delete(id);
+    await notificationService.dismissNotification(id);
     await this.saveDownloads();
     // Freed slot → process queue
     this.processQueue();
@@ -639,16 +644,26 @@ export class DownloadManager {
     // Delete local file (native only)
     try {
       if (item.localPath && Platform.OS !== 'web') {
-        await FileSystem.deleteAsync(item.localPath, { idempotent: true });
+        // Check if file exists first
+        const fileInfo = await FileSystem.getInfoAsync(item.localPath);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(item.localPath, { idempotent: true });
+          console.log(`✓ Deleted file: ${item.localPath}`);
+        } else {
+          console.log(`⚠ File doesn't exist: ${item.localPath}`);
+        }
       }
     } catch (error) {
       console.error('Failed to delete file:', error);
+      // Don't throw - allow download record to be removed even if file delete fails
     }
 
     this.downloads.delete(id);
     this.downloadTasks.delete(id);
     this.speedTrackers.delete(id);
     this.listeners.delete(id);
+    this.lastNotificationTime.delete(id);
+    await notificationService.dismissNotification(id);
     await this.saveDownloads();
   }
 

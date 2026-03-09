@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { DownloadItem, Category, SearchHistoryItem } from '../types';
 import { CATEGORIES, STORAGE_KEYS } from '../constants';
 import { downloadManager } from '../services/DownloadManager';
+import { notificationService } from '../services/NotificationService';
 import { permissionHandler } from '../utils/permissions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -103,6 +104,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const hasPermission = await permissionHandler.requestStoragePermission();
       dispatch({ type: 'SET_STORAGE_PERMISSION', payload: hasPermission });
+
+      // Initialize notifications
+      await notificationService.initialize();
 
       await downloadManager.initialize();
       const downloads = downloadManager.getAllDownloads();

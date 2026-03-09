@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   Modal,
   Platform,
   TextInput,
+  Animated,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -23,13 +25,50 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [downloadPath, setDownloadPath] = useState('');
   const [defaultPath, setDefaultPath] = useState('');
 
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     if (visible) {
       const current = downloadManager.getDefaultDownloadPath();
       setDownloadPath(current);
       setDefaultPath(FileSystem.documentDirectory || '');
+
+      // Animate in
+      slideAnim.setValue(300);
+      fadeAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 65,
+          friction: 11,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [visible]);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
 
   const handleSave = async () => {
     const trimmed = downloadPath.trim();
@@ -39,7 +78,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     }
     await downloadManager.setDefaultDownloadPath(trimmed);
     showAlert('Saved', 'Download location updated. New downloads will use this path.');
-    onClose();
+    handleClose();
   };
 
   const handleReset = async () => {
@@ -69,86 +108,99 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     }
   };
 
+  if (!visible) return null;
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={handleClose}
+        />
+        <Animated.View
+          style={[
+            styles.sheet,
+            { transform: [{ translateY: slideAnim }] },
+          ]}
+        >
           {/* Handle bar */}
           <View style={styles.handleBar} />
 
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>SETTINGS</Text>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <MaterialIcons name="close" size={18} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Download Location Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="folder" size={16} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>Download Location</Text>
-            </View>
-
-            <Text style={styles.hint}>
-              Set the default directory where downloaded files are saved.
-              {Platform.OS === 'android'
-                ? ' Use the picker to grant access to external storage or SD card.'
-                : ''}
-            </Text>
-
-            <View style={styles.pathInput}>
-              <TextInput
-                style={styles.pathTextInput}
-                value={downloadPath}
-                onChangeText={setDownloadPath}
-                placeholder="Enter download path…"
-                placeholderTextColor={COLORS.textDim}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            {/* Action buttons */}
-            <View style={styles.buttonRow}>
-              {Platform.OS === 'android' && (
-                <TouchableOpacity
-                  style={styles.pickerBtn}
-                  onPress={handlePickDirectory}
-                >
-                  <MaterialIcons name="sd-storage" size={16} color={COLORS.primary} />
-                  <Text style={styles.pickerBtnText}>Pick Directory</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-                <MaterialIcons name="restore" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.resetBtnText}>Reset</Text>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>SETTINGS</Text>
+              <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+                <MaterialIcons name="close" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {/* Default path info */}
-            <View style={styles.defaultInfo}>
-              <MaterialIcons name="info-outline" size={12} color={COLORS.textDim} />
-              <Text style={styles.defaultInfoText}>
-                Default: {defaultPath || 'App Documents'}
+            {/* Download Location Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialIcons name="folder" size={16} color={COLORS.primary} />
+                <Text style={styles.sectionTitle}>Download Location</Text>
+              </View>
+
+              <Text style={styles.hint}>
+                Set the default directory where downloaded files are saved.
+                {Platform.OS === 'android'
+                  ? ' Use the picker to grant access to external storage or SD card.'
+                  : ''}
               </Text>
+
+              <View style={styles.pathInput}>
+                <TextInput
+                  style={styles.pathTextInput}
+                  value={downloadPath}
+                  onChangeText={setDownloadPath}
+                  placeholder="Enter download path…"
+                  placeholderTextColor={COLORS.textDim}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Action buttons */}
+              <View style={styles.buttonRow}>
+                {Platform.OS === 'android' && (
+                  <TouchableOpacity
+                    style={styles.pickerBtn}
+                    onPress={handlePickDirectory}
+                  >
+                    <MaterialIcons name="sd-storage" size={16} color={COLORS.primary} />
+                    <Text style={styles.pickerBtnText}>Pick Directory</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+                  <MaterialIcons name="restore" size={16} color={COLORS.textSecondary} />
+                  <Text style={styles.resetBtnText}>Reset</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Default path info */}
+              <View style={styles.defaultInfo}>
+                <MaterialIcons name="info-outline" size={12} color={COLORS.textDim} />
+                <Text style={styles.defaultInfoText}>
+                  Default: {defaultPath || 'App Documents'}
+                </Text>
+              </View>
             </View>
-          </View>
 
           {/* Save button */}
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <MaterialIcons name="check" size={18} color="#fff" />
             <Text style={styles.saveBtnText}>Save Settings</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -158,6 +210,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   sheet: {
     backgroundColor: COLORS.surface,

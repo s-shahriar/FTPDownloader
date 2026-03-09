@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 # /android - keeping android for custom gradle configs
+
+# local documentation (not for public repo)
+ROUTE_ANALYSIS.md
+
+# build artifacts
+*.apk
+*.aab
