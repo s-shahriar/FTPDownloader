@@ -16,6 +16,8 @@ import { FTPClient } from '../services/FTPClient';
 import { downloadManager } from '../services/DownloadManager';
 import { showToast } from '../components/Toast';
 import { showAlert } from '../components/AlertModal';
+import { ErrorModal, ApiError } from '../components/ErrorModal';
+import { parseApiError } from '../utils/errorHandler';
 import { COLORS } from '../constants';
 import { FTPItem, Category } from '../types';
 
@@ -25,6 +27,7 @@ export function SearchResultsScreen({ route, navigation }: any) {
   const { folderUrl, folderName, category, query } = route.params;
   const [results, setResults] = useState<FTPItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
   const { dispatch } = useApp();
 
   useEffect(() => {
@@ -33,15 +36,17 @@ export function SearchResultsScreen({ route, navigation }: any) {
 
   const loadFolder = async (url: string) => {
     setIsLoading(true);
+    setError(null);
     try {
       const ftpClient = new FTPClient();
       const items = await ftpClient.fetchDirectory(url);
       const filtered = FTPClient.filterMediaItems(items);
       console.log(`Loaded ${items.length} items, showing ${filtered.length} (filtered)`);
       setResults(filtered);
-    } catch (error) {
-      console.error('Error loading folder:', error);
-      showAlert('Error', 'Failed to load folder contents. Please check your connection.');
+    } catch (err: any) {
+      console.error('Error loading folder:', err);
+      const apiError = parseApiError(err, url);
+      setError(apiError);
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +160,13 @@ export function SearchResultsScreen({ route, navigation }: any) {
           style={styles.list}
         />
       )}
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={error !== null}
+        error={error}
+        onClose={() => setError(null)}
+      />
     </Wrapper>
   );
 }

@@ -220,22 +220,41 @@ export class FTPClient {
    * Returns parsed FTPItem[] with full URLs for each item.
    */
   async fetchDirectory(fullUrl: string): Promise<FTPItem[]> {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 30000); // 30 second timeout
+
     try {
       const proxiedUrl = this.getProxiedUrl(fullUrl);
       console.log('Fetching:', fullUrl);
 
-      const response = await fetch(proxiedUrl, { method: 'GET' });
+      const response = await fetch(proxiedUrl, {
+        method: 'GET',
+        signal: abortController.signal,
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch directory: ${response.status}`);
+        const error: any = new Error(`Failed to fetch directory: ${response.statusText}`);
+        error.status = response.status;
+        error.statusCode = response.status;
+        error.endpoint = fullUrl;
+        throw error;
       }
 
       const html = await response.text();
       const items = this.parseH5aiListing(html, fullUrl);
       console.log(`Parsed ${items.length} items from ${fullUrl}`);
       return items;
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error('Error fetching directory:', error);
+
+      // Attach endpoint information to the error
+      if (!error.endpoint) {
+        error.endpoint = fullUrl;
+      }
+
       throw error;
     }
   }

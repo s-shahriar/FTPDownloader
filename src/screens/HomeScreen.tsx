@@ -17,6 +17,8 @@ import { CategoryDropdown } from '../components/CategoryDropdown';
 import { ResultItem } from '../components/ResultItem';
 import { FTPClient } from '../services/FTPClient';
 import { showAlert } from '../components/AlertModal';
+import { ErrorModal, ApiError } from '../components/ErrorModal';
+import { parseApiError } from '../utils/errorHandler';
 import { COLORS } from '../constants';
 import { FTPItem } from '../types';
 
@@ -31,6 +33,7 @@ export function HomeScreen({ navigation }: any) {
   const [searchResults, setSearchResults] = useState<FTPItem[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
   const [yearFocused, setYearFocused] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
 
   const needsYear = selectedCategory ? FTPClient.categoryNeedsYear(selectedCategory) : false;
 
@@ -96,9 +99,16 @@ export function HomeScreen({ navigation }: any) {
       } else {
         setSearchResults(filtered);
       }
-    } catch (error) {
-      console.error('Search error:', error);
-      showAlert('Search Error', 'Failed to search. Please check your connection and try again.');
+    } catch (err: any) {
+      console.error('Search error:', err);
+
+      // Parse the error and show in error modal
+      const searchUrl = selectedCategory.type === 'movie_merged' || selectedCategory.type === 'movie_foreign'
+        ? selectedCategory.server + selectedCategory.path
+        : FTPClient.buildSearchUrl(selectedCategory, searchQuery, year.trim() || undefined);
+
+      const apiError = parseApiError(err, searchUrl);
+      setError(apiError);
     } finally {
       setIsLoading(false);
     }
@@ -278,6 +288,13 @@ export function HomeScreen({ navigation }: any) {
           <Text style={styles.downloadsCtaText}>My Downloads</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={error !== null}
+        error={error}
+        onClose={() => setError(null)}
+      />
     </Wrapper>
   );
 }

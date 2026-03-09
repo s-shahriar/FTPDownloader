@@ -23,6 +23,7 @@
     "android": {
       "package": "com.ftpdownloader.app",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "splash": {
         "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
@@ -93,7 +94,8 @@
           ]
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./android-network-security-config.js"
     ]
   }
 }
