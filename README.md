@@ -22,15 +22,48 @@ A professional React Native Expo app for browsing and downloading media from FTP
    npm install
    ```
 
-2. Start the development server:
+2. Install EAS CLI (for building APKs):
    ```bash
-   npx expo start
+   npm install -g eas-cli
    ```
 
-3. Run on Android:
+3. Start the development server:
    ```bash
-   npx expo run:android
+   npm start
    ```
+
+## Running the App
+
+### Development
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start Expo dev server |
+| `npm run dev:android` | Run on connected Android device with hot reload |
+| `npm run android` | Start via Expo Go on Android |
+| `npm run web` | Start web version |
+| `npm run web:full` | Start web version with CORS proxy |
+
+### Building APK (Local)
+
+| Command | Description |
+|---------|-------------|
+| `npm run build:android` | Build APK for **arm64 only** (faster build, smaller APK) |
+| `npm run build:android:all` | Build APK for **all architectures** (universal) |
+| `npm run build:android:x86` | Build APK for **x86_64 only** (emulator) |
+
+### Building APK (Cloud)
+
+| Command | Description |
+|---------|-------------|
+| `npm run build:android:cloud` | Build APK on EAS servers (no local resources needed) |
+
+### Build Optimizations
+
+The build is configured with the following optimizations in [eas.json](eas.json):
+- **arm64-v8a only** (default profile) — smaller APK, faster build
+- **Parallel Gradle execution** — uses multiple workers to speed up builds
+- **Max 4 Gradle workers** — prevents system from hanging during builds
 
 ## Usage
 

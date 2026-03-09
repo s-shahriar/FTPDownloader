@@ -144,7 +144,7 @@ export function HomeScreen({ navigation }: any) {
       >
         {/* App bar */}
         <View style={styles.appbar}>
-          <Text style={styles.appbarSubtitle}>DhakaFlix Media Server</Text>
+          <Text style={styles.appbarSubtitle}>Media Server</Text>
           <Text style={styles.appbarTitle}>FTP DOWNLOADER</Text>
           <View style={styles.connPill}>
             <View style={styles.connDot} />

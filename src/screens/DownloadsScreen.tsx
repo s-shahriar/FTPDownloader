@@ -26,7 +26,8 @@ export function DownloadsScreen({ navigation }: any) {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const allDownloads = downloadManager.getAllDownloads();
+      // Spread each download to create new references so React.memo can diff
+      const allDownloads = downloadManager.getAllDownloads().map(d => ({ ...d }));
       dispatch({ type: 'SET_DOWNLOADS', payload: allDownloads });
     }, 1000);
 

@@ -48,7 +48,7 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export function DownloadItemCard({
+export const DownloadItemCard = React.memo(function DownloadItemCard({
   download,
   onPause,
   onResume,
@@ -259,7 +259,15 @@ export function DownloadItemCard({
       <View style={styles.actionsContainer}>{renderActions()}</View>
     </View>
   );
-}
+}, (prev, next) => {
+  const p = prev.download;
+  const n = next.download;
+  return p.status === n.status &&
+    p.progress === n.progress &&
+    Math.round(p.speed / 1024) === Math.round(n.speed / 1024) &&
+    p.error === n.error &&
+    p.name === n.name;
+});
 
 const styles = StyleSheet.create({
   container: {

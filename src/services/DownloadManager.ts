@@ -188,11 +188,12 @@ export class DownloadManager {
     const tracker = new SpeedTracker();
     this.speedTrackers.set(id, tracker);
 
-    const downloadPath = this.getDownloadPath(item.name);
+    // Always download to internal cache first (reliable, no permission issues)
+    const cachePath = `${FileSystem.cacheDirectory}${item.name}`;
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.url,
-      downloadPath,
+      cachePath,
       {},
       (progress) => {
         this.handleProgress(id, progress);
@@ -203,7 +204,7 @@ export class DownloadManager {
 
     // Mark as downloading
     item.status = DOWNLOAD_STATUS.DOWNLOADING;
-    item.localPath = downloadPath;
+    item.localPath = cachePath;
     item.startTime = Date.now();
     item.error = undefined;
     this.downloads.set(id, item);
@@ -213,12 +214,8 @@ export class DownloadManager {
       const result = await downloadResumable.downloadAsync();
 
       if (result && result.uri) {
-        try {
-          const asset = await MediaLibrary.createAssetAsync(result.uri);
-          item.localPath = asset.uri;
-        } catch (mediaError) {
-          console.warn('MediaLibrary save failed:', mediaError);
-        }
+        // Move to final location (Download/FTPDownloader or MediaLibrary)
+        await this.moveToFinalLocation(item, result.uri);
 
         item.status = DOWNLOAD_STATUS.COMPLETED;
         item.progress = 100;
@@ -230,8 +227,19 @@ export class DownloadManager {
       }
     } catch (error: any) {
       if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
-        item.status = DOWNLOAD_STATUS.FAILED;
-        item.error = error.message || 'Unknown error';
+        const errorMsg = error.message || 'Unknown error';
+        // Connection abort = app was backgrounded. Mark as paused so user can retry.
+        const isConnectionAbort =
+          errorMsg.includes('connection abort') ||
+          errorMsg.includes('Connection reset') ||
+          errorMsg.includes('ECONNRESET');
+        if (isConnectionAbort) {
+          item.status = DOWNLOAD_STATUS.PAUSED;
+          item.error = undefined;
+        } else {
+          item.status = DOWNLOAD_STATUS.FAILED;
+          item.error = errorMsg;
+        }
         item.speed = 0;
         item.timeRemaining = 0;
       }
@@ -241,6 +249,59 @@ export class DownloadManager {
       this.downloadTasks.delete(id);
       this.saveDownloads();
       this.processQueue();
+    }
+  }
+
+  /**
+   * Move completed download to final storage location.
+   * Tries: 1) External Download/FTPDownloader  2) MediaLibrary album  3) Keep in cache
+   */
+  private async moveToFinalLocation(item: DownloadItem, sourceUri: string): Promise<void> {
+    if (Platform.OS !== 'android') {
+      item.localPath = sourceUri;
+      return;
+    }
+
+    // If user set a custom SAF path, use it as-is (files already download to cache)
+    if (this.defaultDownloadPath && this.defaultDownloadPath.startsWith('content://')) {
+      // For SAF URIs, fall back to MediaLibrary album approach
+      await this.saveToMediaLibraryAlbum(item, sourceUri);
+      return;
+    }
+
+    // Approach 1: Direct move to /Download/FTPDownloader/
+    try {
+      const extDir = 'file:///storage/emulated/0/Download/FTPDownloader/';
+      await FileSystem.makeDirectoryAsync(extDir, { intermediates: true });
+      const dest = extDir + item.name;
+      await FileSystem.moveAsync({ from: sourceUri, to: dest });
+      item.localPath = dest;
+      return;
+    } catch {
+      // Scoped storage may block this — fall through
+    }
+
+    // Approach 2: MediaLibrary album
+    await this.saveToMediaLibraryAlbum(item, sourceUri);
+  }
+
+  private async saveToMediaLibraryAlbum(item: DownloadItem, sourceUri: string): Promise<void> {
+    try {
+      const asset = await MediaLibrary.createAssetAsync(sourceUri);
+      try {
+        const album = await MediaLibrary.getAlbumAsync('FTPDownloader');
+        if (album) {
+          await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+        } else {
+          await MediaLibrary.createAlbumAsync('FTPDownloader', asset, false);
+        }
+      } catch {
+        // Album creation failed — asset is still in DCIM, which is OK
+      }
+      item.localPath = asset.uri;
+    } catch (e) {
+      console.warn('MediaLibrary save failed, file stays in cache:', e);
+      item.localPath = sourceUri;
     }
   }
 
@@ -432,29 +493,37 @@ export class DownloadManager {
     }
 
     const task = this.downloadTasks.get(id);
-    if (this.getActiveCount() < DOWNLOAD_CONFIG.MAX_CONCURRENT && task) {
-      // Slot available — resume immediately
-      try {
-        const tracker = new SpeedTracker();
-        this.speedTrackers.set(id, tracker);
 
-        item.status = DOWNLOAD_STATUS.DOWNLOADING;
-        this.downloads.set(id, item);
-        await this.saveDownloads();
+    if (this.getActiveCount() < DOWNLOAD_CONFIG.MAX_CONCURRENT) {
+      if (task) {
+        // Slot available + task exists — resume the existing DownloadResumable
+        try {
+          const tracker = new SpeedTracker();
+          this.speedTrackers.set(id, tracker);
 
-        // Resume and handle completion in background
-        task.resumeAsync().then(result => {
-          if (result && result.uri) {
-            const saveToLibrary = async () => {
-              try {
-                const asset = await MediaLibrary.createAssetAsync(result.uri);
-                item.localPath = asset.uri;
-              } catch (e) {
-                console.warn('MediaLibrary save failed:', e);
-              }
-              item.status = DOWNLOAD_STATUS.COMPLETED;
-              item.progress = 100;
-              item.endTime = Date.now();
+          item.status = DOWNLOAD_STATUS.DOWNLOADING;
+          this.downloads.set(id, item);
+          await this.saveDownloads();
+
+          task.resumeAsync().then(result => {
+            if (result && result.uri) {
+              this.moveToFinalLocation(item, result.uri).then(() => {
+                item.status = DOWNLOAD_STATUS.COMPLETED;
+                item.progress = 100;
+                item.endTime = Date.now();
+                item.speed = 0;
+                item.timeRemaining = 0;
+                this.downloads.set(id, item);
+                this.speedTrackers.delete(id);
+                this.downloadTasks.delete(id);
+                this.saveDownloads();
+                this.processQueue();
+              });
+            }
+          }).catch((error: any) => {
+            if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
+              item.status = DOWNLOAD_STATUS.FAILED;
+              item.error = error.message || 'Unknown error';
               item.speed = 0;
               item.timeRemaining = 0;
               this.downloads.set(id, item);
@@ -462,27 +531,25 @@ export class DownloadManager {
               this.downloadTasks.delete(id);
               this.saveDownloads();
               this.processQueue();
-            };
-            saveToLibrary();
-          }
-        }).catch((error: any) => {
-          if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
-            item.status = DOWNLOAD_STATUS.FAILED;
-            item.error = error.message || 'Unknown error';
-            item.speed = 0;
-            item.timeRemaining = 0;
-            this.downloads.set(id, item);
-            this.speedTrackers.delete(id);
-            this.downloadTasks.delete(id);
-            this.saveDownloads();
-            this.processQueue();
-          }
-        });
-      } catch (error) {
-        console.error('Failed to resume download:', error);
+            }
+          });
+        } catch (error) {
+          console.error('Failed to resume download:', error);
+        }
+      } else {
+        // Slot available but task was lost (e.g. connection abort cleaned it up)
+        // Restart the download from scratch
+        item.progress = 0;
+        item.downloadedBytes = 0;
+        item.speed = 0;
+        item.timeRemaining = 0;
+        item.error = undefined;
+        item.status = DOWNLOAD_STATUS.QUEUED;
+        this.downloads.set(id, item);
+        this.executeDownload(id);
       }
     } else {
-      // No slot available — re-queue
+      // No slot available — re-queue and process
       item.status = DOWNLOAD_STATUS.QUEUED;
       item.speed = 0;
       item.timeRemaining = 0;
@@ -491,6 +558,7 @@ export class DownloadManager {
         this.queue.push(id);
       }
       await this.saveDownloads();
+      this.processQueue();
     }
   }
 
