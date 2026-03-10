@@ -4,6 +4,7 @@ import { NavigationContainer, NavigationContainerRef } from '@react-navigation/n
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import notifee, { EventType } from '@notifee/react-native';
 import { AppProvider, useApp } from './src/contexts/AppContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SearchResultsScreen } from './src/screens/SearchResultsScreen';
@@ -14,6 +15,8 @@ import { ToastHost } from './src/components/Toast';
 import { AlertHost } from './src/components/AlertModal';
 import { DownloadNotificationBar } from './src/components/DownloadNotificationBar';
 import { CustomSplashScreen } from './src/components/CustomSplashScreen';
+import { downloadManager } from './src/services/DownloadManager';
+import { notificationService } from './src/services/NotificationService';
 
 // Prevent native splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -41,6 +44,74 @@ function AppNavigator() {
       SplashScreen.hideAsync();
     }
   }, [isLoading]);
+
+  // Setup Notifee event handlers
+  useEffect(() => {
+    // Handle notification actions when app is in foreground
+    const unsubscribeForeground = notifee.onForegroundEvent(async ({ type, detail }) => {
+      if (type === EventType.PRESS && detail.pressAction?.id === 'open_downloads') {
+        // Navigate to downloads screen
+        navigationRef.current?.navigate('Downloads');
+      }
+
+      if (type === EventType.ACTION_PRESS) {
+        await handleNotificationAction(detail.pressAction!.id, detail.notification?.data);
+      }
+    });
+
+    // Handle notification actions when app is in background
+    notifee.onBackgroundEvent(async ({ type, detail }) => {
+      if (type === EventType.ACTION_PRESS) {
+        await handleNotificationAction(detail.pressAction!.id, detail.notification?.data);
+      }
+    });
+
+    return () => {
+      unsubscribeForeground();
+    };
+  }, []);
+
+  async function handleNotificationAction(actionId: string, data: any) {
+    const downloadId = data?.downloadId;
+
+    // Parse action
+    if (actionId.startsWith('pause_')) {
+      const id = actionId.replace('pause_', '');
+      if (id === 'all') {
+        // Pause all downloads
+        const downloads = await downloadManager.getAllDownloads();
+        for (const download of downloads) {
+          if (download.status === 'downloading') {
+            await downloadManager.pauseDownload(download.id);
+          }
+        }
+      } else {
+        await downloadManager.pauseDownload(id);
+      }
+    } else if (actionId.startsWith('resume_')) {
+      const id = actionId.replace('resume_', '');
+      if (id === 'all') {
+        // Resume all paused downloads
+        const downloads = await downloadManager.getAllDownloads();
+        for (const download of downloads) {
+          if (download.status === 'paused') {
+            await downloadManager.resumeDownload(download.id);
+          }
+        }
+      } else {
+        await downloadManager.resumeDownload(id);
+      }
+    } else if (actionId.startsWith('cancel_')) {
+      const id = actionId.replace('cancel_', '');
+      await downloadManager.cancelDownload(id);
+    } else if (actionId.startsWith('retry_')) {
+      const id = actionId.replace('retry_', '');
+      await downloadManager.resumeDownload(id); // Resume is same as retry for paused downloads
+    } else if (actionId.startsWith('clear_')) {
+      const id = actionId.replace('clear_', '');
+      await notificationService.dismissDownloadNotification(id);
+    }
+  }
 
   if (isLoading) {
     return <CustomSplashScreen />;

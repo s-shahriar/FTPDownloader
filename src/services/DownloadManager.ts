@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { DOWNLOAD_STATUS, DOWNLOAD_CONFIG, STORAGE_KEYS } from '../constants';
 import { DownloadItem, DownloadProgress } from '../types';
 import { notificationService } from './NotificationService';
+import { safPermissionService } from './SAFPermissionService';
 
 // ── Speed Tracker ──────────────────────────────────────────
 // Rolling-window speed calculator per download
@@ -213,14 +214,54 @@ export class DownloadManager {
     this.saveDownloads();
 
     // Show notification that download started
-    await notificationService.showDownloadStarted(id, item.name);
+    await notificationService.onDownloadStart(id, item.name, item.category);
 
     try {
       const result = await downloadResumable.downloadAsync();
 
       if (result && result.uri) {
-        // Step 2: Move from cache to public storage using MediaLibrary
-        const publicUri = await this.moveToPublicStorage(result.uri, item.name);
+        // Step 2: Save to permanent storage (SAF or MediaLibrary)
+        let publicUri: string;
+
+        // Try SAF first (if configured)
+        const safUri = safPermissionService.getSAFDirectoryUri();
+        console.log(`🔍 [STORAGE] SAF URI configured: ${safUri ? 'YES' : 'NO'}`);
+
+        if (safUri) {
+          console.log('📁 [STORAGE] Attempting SAF write...');
+          console.log(`   Downloaded file URI: ${result.uri}`);
+          console.log(`   Target filename: ${item.name}`);
+
+          try {
+            const safResult = await safPermissionService.writeFileToSAF(
+              result.uri,
+              item.name
+            );
+
+            console.log(`🔍 [STORAGE] SAF write result:`, safResult);
+
+            if (safResult.success && safResult.uri) {
+              publicUri = safResult.uri;
+              console.log('✓ [STORAGE] File saved via SAF:', publicUri);
+              console.log('✓ [STORAGE] NOT using MediaLibrary fallback');
+            } else {
+              console.warn('⚠️ [STORAGE] SAF write failed, falling back to MediaLibrary');
+              console.warn('   Error:', safResult.error);
+              publicUri = await this.moveToPublicStorage(result.uri, item.name);
+              console.log('✓ [STORAGE] MediaLibrary fallback completed:', publicUri);
+            }
+          } catch (error: any) {
+            console.error('❌ [STORAGE] SAF write exception, falling back to MediaLibrary');
+            console.error('   Exception:', error.message);
+            publicUri = await this.moveToPublicStorage(result.uri, item.name);
+            console.log('✓ [STORAGE] MediaLibrary fallback completed:', publicUri);
+          }
+        } else {
+          // SAF not configured, use MediaLibrary
+          console.log('📸 [STORAGE] SAF not configured, using MediaLibrary');
+          publicUri = await this.moveToPublicStorage(result.uri, item.name);
+          console.log('✓ [STORAGE] MediaLibrary save completed:', publicUri);
+        }
 
         item.status = DOWNLOAD_STATUS.COMPLETED;
         item.progress = 100;
@@ -230,7 +271,7 @@ export class DownloadManager {
         item.localPath = publicUri;
 
         // Show completion notification
-        await notificationService.showDownloadCompleted(id, item.name);
+        await notificationService.onDownloadComplete(id, item.name);
       } else {
         throw new Error('Download failed — no result');
       }
@@ -246,13 +287,13 @@ export class DownloadManager {
           item.status = DOWNLOAD_STATUS.PAUSED;
           item.error = undefined;
           // Keep task for resume - DO NOT delete
-          // Dismiss notification for paused download
-          await notificationService.dismissNotification(id);
+          // With foreground service, this should not happen anymore
+          await notificationService.onDownloadPaused(id, item.name);
         } else {
           item.status = DOWNLOAD_STATUS.FAILED;
           item.error = errorMsg;
           // Show failure notification
-          await notificationService.showDownloadFailed(id, item.name, errorMsg);
+          await notificationService.onDownloadFailed(id, item.name, errorMsg);
           // Only delete task on failure
           this.downloadTasks.delete(id);
         }
@@ -426,7 +467,17 @@ export class DownloadManager {
     const lastTime = this.lastNotificationTime.get(id) || 0;
     if (now - lastTime > 2000 && percentage > 0 && percentage < 100) {
       this.lastNotificationTime.set(id, now);
-      notificationService.updateDownloadProgress(id, item.name, percentage, item.speed);
+      notificationService.onDownloadProgress({
+        id,
+        filename: item.name,
+        progress: percentage,
+        speed: item.speed,
+        eta: item.timeRemaining,
+        downloadedBytes: item.downloadedBytes,
+        totalBytes: item.totalBytes,
+        status: 'downloading',
+        category: item.category,
+      });
     }
   }
 
@@ -501,7 +552,7 @@ export class DownloadManager {
         this.speedTrackers.delete(id);
         this.lastNotificationTime.delete(id);
         // Show paused notification
-        await notificationService.showDownloadPaused(id, item.name);
+        await notificationService.onDownloadPaused(id, item.name);
         await this.saveDownloads();
         this.processQueue();
       } catch (error) {
@@ -540,9 +591,9 @@ export class DownloadManager {
           await this.saveDownloads();
 
           // Show resuming notification
-          notificationService.showDownloadResumed(id, item.name);
+          await notificationService.onDownloadResumed(id, item.name);
 
-          task.resumeAsync().then(result => {
+          task.resumeAsync().then(async result => {
             if (result && result.uri) {
               item.status = DOWNLOAD_STATUS.COMPLETED;
               item.progress = 100;
@@ -557,9 +608,9 @@ export class DownloadManager {
               this.saveDownloads();
               this.processQueue();
               // Show completion notification
-              notificationService.showDownloadCompleted(id, item.name);
+              await notificationService.onDownloadComplete(id, item.name);
             }
-          }).catch((error: any) => {
+          }).catch(async (error: any) => {
             if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
               item.status = DOWNLOAD_STATUS.FAILED;
               item.error = error.message || 'Unknown error';
@@ -572,7 +623,7 @@ export class DownloadManager {
               this.saveDownloads();
               this.processQueue();
               // Show failure notification
-              notificationService.showDownloadFailed(id, item.name, error.message || 'Unknown error');
+              await notificationService.onDownloadFailed(id, item.name, error.message || 'Unknown error');
             }
           });
         } catch (error) {
@@ -616,7 +667,7 @@ export class DownloadManager {
       item.timeRemaining = 0;
       this.downloads.set(id, item);
       this.lastNotificationTime.delete(id);
-      await notificationService.dismissNotification(id);
+      await notificationService.dismissDownloadNotification(id);
       await this.saveDownloads();
       return;
     }
@@ -634,7 +685,7 @@ export class DownloadManager {
     this.downloadTasks.delete(id);
     this.speedTrackers.delete(id);
     this.lastNotificationTime.delete(id);
-    await notificationService.dismissNotification(id);
+    await notificationService.dismissDownloadNotification(id);
     await this.saveDownloads();
     // Freed slot → process queue
     this.processQueue();
@@ -685,17 +736,28 @@ export class DownloadManager {
     // Delete local file (native only)
     try {
       if (item.localPath && Platform.OS !== 'web') {
-        // Check if file exists first
-        const fileInfo = await FileSystem.getInfoAsync(item.localPath);
-        if (fileInfo.exists) {
-          await FileSystem.deleteAsync(item.localPath, { idempotent: true });
-          console.log(`✓ Deleted file: ${item.localPath}`);
+        // Check if this is a SAF URI (content://)
+        if (item.localPath.startsWith('content://')) {
+          console.log(`🗑️ Deleting SAF file: ${item.localPath}`);
+          const deleted = await safPermissionService.deleteFileFromSAF(item.localPath);
+          if (deleted) {
+            console.log(`✓ SAF file deleted successfully`);
+          } else {
+            console.warn(`⚠️ Failed to delete SAF file (may already be deleted)`);
+          }
         } else {
-          console.log(`⚠ File doesn't exist: ${item.localPath}`);
+          // Regular file path (MediaLibrary or cache)
+          const fileInfo = await FileSystem.getInfoAsync(item.localPath);
+          if (fileInfo.exists) {
+            await FileSystem.deleteAsync(item.localPath, { idempotent: true });
+            console.log(`✓ Deleted file: ${item.localPath}`);
+          } else {
+            console.log(`⚠️ File doesn't exist: ${item.localPath}`);
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to delete file:', error);
+      console.error('❌ Failed to delete file:', error);
       // Don't throw - allow download record to be removed even if file delete fails
     }
 
@@ -704,7 +766,7 @@ export class DownloadManager {
     this.speedTrackers.delete(id);
     this.listeners.delete(id);
     this.lastNotificationTime.delete(id);
-    await notificationService.dismissNotification(id);
+    await notificationService.dismissDownloadNotification(id);
     await this.saveDownloads();
   }
 

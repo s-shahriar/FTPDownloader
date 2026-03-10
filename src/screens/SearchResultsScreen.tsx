@@ -16,6 +16,7 @@ import { FTPClient } from '../services/FTPClient';
 import { downloadManager } from '../services/DownloadManager';
 import { showToast } from '../components/Toast';
 import { showAlert } from '../components/AlertModal';
+import { SAFOnboardingModal } from '../components/SAFOnboardingModal';
 import { ErrorModal, ApiError } from '../components/ErrorModal';
 import { parseApiError } from '../utils/errorHandler';
 import { COLORS } from '../constants';
@@ -28,7 +29,9 @@ export function SearchResultsScreen({ route, navigation }: any) {
   const [results, setResults] = useState<FTPItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
-  const { dispatch } = useApp();
+  const [showSAFOnboarding, setShowSAFOnboarding] = useState(false);
+  const [pendingDownloadItem, setPendingDownloadItem] = useState<FTPItem | null>(null);
+  const { dispatch, safFolderConfigured } = useApp();
 
   useEffect(() => {
     loadFolder(folderUrl);
@@ -64,6 +67,19 @@ export function SearchResultsScreen({ route, navigation }: any) {
   };
 
   const handleDownload = async (item: FTPItem) => {
+    // Check if SAF folder is configured (Android only)
+    if (Platform.OS === 'android' && !safFolderConfigured) {
+      console.log('⚠️ SAF not configured, showing onboarding modal');
+      setPendingDownloadItem(item);
+      setShowSAFOnboarding(true);
+      return;
+    }
+
+    // Proceed with download
+    await executeDownload(item);
+  };
+
+  const executeDownload = async (item: FTPItem) => {
     try {
       const fileUrl = item.url;
       const filename = item.name;
@@ -92,6 +108,25 @@ export function SearchResultsScreen({ route, navigation }: any) {
       console.error('Download error:', error);
       showAlert('Download Failed', 'Failed to start download. Check your connection and storage permissions.');
     }
+  };
+
+  const handleSAFOnboardingComplete = (success: boolean) => {
+    setShowSAFOnboarding(false);
+
+    if (success && pendingDownloadItem) {
+      // Update context state
+      dispatch({ type: 'SET_SAF_FOLDER_CONFIGURED', payload: true });
+      // Execute the pending download
+      executeDownload(pendingDownloadItem);
+    }
+
+    setPendingDownloadItem(null);
+  };
+
+  const handleSAFOnboardingCancel = () => {
+    setShowSAFOnboarding(false);
+    setPendingDownloadItem(null);
+    showToast('Download cancelled - folder not selected');
   };
 
   const renderEmptyState = () => (
@@ -166,6 +201,13 @@ export function SearchResultsScreen({ route, navigation }: any) {
         visible={error !== null}
         error={error}
         onClose={() => setError(null)}
+      />
+
+      {/* SAF Onboarding Modal */}
+      <SAFOnboardingModal
+        visible={showSAFOnboarding}
+        onComplete={handleSAFOnboardingComplete}
+        onCancel={handleSAFOnboardingCancel}
       />
     </Wrapper>
   );

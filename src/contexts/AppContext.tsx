@@ -3,6 +3,7 @@ import { DownloadItem, Category, SearchHistoryItem } from '../types';
 import { CATEGORIES, STORAGE_KEYS } from '../constants';
 import { downloadManager } from '../services/DownloadManager';
 import { notificationService } from '../services/NotificationService';
+import { safPermissionService } from '../services/SAFPermissionService';
 import { permissionHandler } from '../utils/permissions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -14,6 +15,7 @@ interface AppState {
   isLoading: boolean;
   error: string | null;
   storagePermissionGranted: boolean;
+  safFolderConfigured: boolean;
 }
 
 type AppAction =
@@ -28,7 +30,8 @@ type AppAction =
   | { type: 'SET_SEARCH_QUERY'; payload: string }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_STORAGE_PERMISSION'; payload: boolean };
+  | { type: 'SET_STORAGE_PERMISSION'; payload: boolean }
+  | { type: 'SET_SAF_FOLDER_CONFIGURED'; payload: boolean };
 
 const initialState: AppState = {
   downloads: [],
@@ -38,6 +41,7 @@ const initialState: AppState = {
   isLoading: false,
   error: null,
   storagePermissionGranted: false,
+  safFolderConfigured: false,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -75,6 +79,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, error: action.payload };
     case 'SET_STORAGE_PERMISSION':
       return { ...state, storagePermissionGranted: action.payload };
+    case 'SET_SAF_FOLDER_CONFIGURED':
+      return { ...state, safFolderConfigured: action.payload };
     default:
       return state;
   }
@@ -84,6 +90,7 @@ interface AppContextType extends AppState {
   dispatch: React.Dispatch<AppAction>;
   categories: Category[];
   requestStoragePermission: () => Promise<boolean>;
+  requestSAFSetup: () => Promise<boolean>;
   loadSearchHistory: () => Promise<void>;
   saveSearchHistory: (query: string, category: string) => Promise<void>;
 }
@@ -104,6 +111,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const hasPermission = await permissionHandler.requestStoragePermission();
       dispatch({ type: 'SET_STORAGE_PERMISSION', payload: hasPermission });
+
+      // Initialize SAF permission service
+      await safPermissionService.initialize();
+
+      // Validate persisted SAF permissions
+      const safValid = await safPermissionService.validatePersistedPermission();
+      dispatch({ type: 'SET_SAF_FOLDER_CONFIGURED', payload: safValid });
+
+      if (safValid) {
+        console.log('✓ SAF folder configured:', safPermissionService.getFolderDisplayName());
+      } else {
+        console.log('⚠️ SAF not configured - user will be prompted on first download');
+      }
 
       // Initialize notifications
       await notificationService.initialize();
@@ -126,6 +146,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const granted = await permissionHandler.requestStoragePermission();
     dispatch({ type: 'SET_STORAGE_PERMISSION', payload: granted });
     return granted;
+  }
+
+  async function requestSAFSetup(): Promise<boolean> {
+    const result = await safPermissionService.requestFolderAccess();
+    dispatch({ type: 'SET_SAF_FOLDER_CONFIGURED', payload: result.granted });
+    return result.granted;
   }
 
   async function loadSearchHistory(): Promise<void> {
@@ -161,6 +187,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch,
     categories,
     requestStoragePermission,
+    requestSAFSetup,
     loadSearchHistory,
     saveSearchHistory,
   };

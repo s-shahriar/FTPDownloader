@@ -13,7 +13,10 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialIcons } from '@expo/vector-icons';
 import { downloadManager } from '../services/DownloadManager';
+import { safPermissionService } from '../services/SAFPermissionService';
+import { useApp } from '../contexts/AppContext';
 import { showAlert } from './AlertModal';
+import { showToast } from './Toast';
 import { COLORS } from '../constants';
 
 interface SettingsModalProps {
@@ -24,6 +27,9 @@ interface SettingsModalProps {
 export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [downloadPath, setDownloadPath] = useState('');
   const [defaultPath, setDefaultPath] = useState('');
+  const [safFolderName, setSAFFolderName] = useState('');
+  const [isSAFConfigured, setIsSAFConfigured] = useState(false);
+  const { dispatch } = useApp();
 
   const slideAnim = useRef(new Animated.Value(300)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -33,6 +39,15 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       const current = downloadManager.getDefaultDownloadPath();
       setDownloadPath(current);
       setDefaultPath(FileSystem.documentDirectory || '');
+
+      // Load SAF configuration
+      const safConfigured = safPermissionService.isSAFConfigured();
+      setIsSAFConfigured(safConfigured);
+      if (safConfigured) {
+        setSAFFolderName(safPermissionService.getFolderDisplayName());
+      } else {
+        setSAFFolderName('Not configured');
+      }
 
       // Animate in
       slideAnim.setValue(300);
@@ -97,14 +112,50 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
     }
 
     try {
-      // Use StorageAccessFramework to let user pick a directory
-      const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-      if (permissions.granted) {
-        setDownloadPath(permissions.directoryUri);
+      // Release old permission if exists
+      if (isSAFConfigured) {
+        await safPermissionService.releaseCurrentPermission();
+        console.log('✓ Released old SAF permission');
       }
-    } catch (error) {
+
+      // Request new folder access
+      const result = await safPermissionService.requestFolderAccess();
+
+      if (result.granted && result.uri) {
+        // Update UI
+        setIsSAFConfigured(true);
+        setSAFFolderName(safPermissionService.getFolderDisplayName());
+        setDownloadPath(result.uri);
+
+        // Update context
+        dispatch({ type: 'SET_SAF_FOLDER_CONFIGURED', payload: true });
+
+        showToast('✓ Folder configured successfully');
+      } else {
+        showAlert('Permission Denied', result.error || 'Please select a folder to save downloads.');
+      }
+    } catch (error: any) {
       console.error('Directory picker error:', error);
-      showAlert('Error', 'Failed to open directory picker.');
+      showAlert('Error', error.message || 'Failed to open directory picker.');
+    }
+  };
+
+  const handleTestAccess = async () => {
+    if (Platform.OS !== 'android' || !isSAFConfigured) return;
+
+    try {
+      const isValid = await safPermissionService.validatePersistedPermission();
+      if (isValid) {
+        showToast('✓ Folder access is valid');
+      } else {
+        showAlert(
+          'Access Lost',
+          'Folder access is no longer valid. Please select a new folder.',
+          [{ text: 'OK', onPress: () => setIsSAFConfigured(false) }]
+        );
+      }
+    } catch (error: any) {
+      showAlert('Test Failed', error.message || 'Failed to test folder access');
     }
   };
 
@@ -146,26 +197,56 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
               <View style={styles.sectionHeader}>
                 <MaterialIcons name="folder" size={16} color={COLORS.primary} />
                 <Text style={styles.sectionTitle}>Download Location</Text>
+                {Platform.OS === 'android' && isSAFConfigured && (
+                  <View style={styles.statusBadge}>
+                    <MaterialIcons name="check-circle" size={12} color={COLORS.success} />
+                    <Text style={styles.statusBadgeText}>Configured</Text>
+                  </View>
+                )}
               </View>
 
               <Text style={styles.hint}>
-                Set the default directory where downloaded files are saved.
                 {Platform.OS === 'android'
-                  ? ' Use the picker to grant access to external storage or SD card.'
-                  : ''}
+                  ? 'Choose where downloads are saved. This permission persists across app restarts.'
+                  : 'Set the default directory where downloaded files are saved.'}
               </Text>
 
-              <View style={styles.pathInput}>
-                <TextInput
-                  style={styles.pathTextInput}
-                  value={downloadPath}
-                  onChangeText={setDownloadPath}
-                  placeholder="Enter download path…"
-                  placeholderTextColor={COLORS.textDim}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+              {/* SAF Folder Display (Android) */}
+              {Platform.OS === 'android' ? (
+                <View style={styles.safFolderDisplay}>
+                  <View style={styles.safFolderInfo}>
+                    <Text style={styles.folderLabel}>Current Folder:</Text>
+                    <Text style={styles.folderPath} numberOfLines={2}>
+                      {safFolderName}
+                    </Text>
+                  </View>
+                  <View style={styles.folderActions}>
+                    <TouchableOpacity
+                      style={styles.testBtn}
+                      onPress={handleTestAccess}
+                      disabled={!isSAFConfigured}
+                    >
+                      <MaterialIcons
+                        name="verified"
+                        size={14}
+                        color={isSAFConfigured ? COLORS.success : COLORS.textDim}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.pathInput}>
+                  <TextInput
+                    style={styles.pathTextInput}
+                    value={downloadPath}
+                    onChangeText={setDownloadPath}
+                    placeholder="Enter download path…"
+                    placeholderTextColor={COLORS.textDim}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              )}
 
               {/* Action buttons */}
               <View style={styles.buttonRow}>
@@ -175,23 +256,38 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                     onPress={handlePickDirectory}
                   >
                     <MaterialIcons name="sd-storage" size={16} color={COLORS.primary} />
-                    <Text style={styles.pickerBtnText}>Pick Directory</Text>
+                    <Text style={styles.pickerBtnText}>
+                      {isSAFConfigured ? 'Change Folder' : 'Choose Folder'}
+                    </Text>
                   </TouchableOpacity>
                 )}
 
-                <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-                  <MaterialIcons name="restore" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.resetBtnText}>Reset</Text>
-                </TouchableOpacity>
+                {Platform.OS !== 'android' && (
+                  <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+                    <MaterialIcons name="restore" size={16} color={COLORS.textSecondary} />
+                    <Text style={styles.resetBtnText}>Reset</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {/* Default path info */}
-              <View style={styles.defaultInfo}>
-                <MaterialIcons name="info-outline" size={12} color={COLORS.textDim} />
-                <Text style={styles.defaultInfoText}>
-                  Default: {defaultPath || 'App Documents'}
-                </Text>
-              </View>
+              {/* Info */}
+              {Platform.OS === 'android' ? (
+                <View style={styles.defaultInfo}>
+                  <MaterialIcons name="info-outline" size={12} color={COLORS.textDim} />
+                  <Text style={styles.defaultInfoText}>
+                    {isSAFConfigured
+                      ? 'Files will be saved to the selected folder'
+                      : 'Not configured - files will be saved to Pictures/FTPDownloader'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.defaultInfo}>
+                  <MaterialIcons name="info-outline" size={12} color={COLORS.textDim} />
+                  <Text style={styles.defaultInfoText}>
+                    Default: {defaultPath || 'App Documents'}
+                  </Text>
+                </View>
+              )}
             </View>
 
           {/* Save button */}
@@ -268,6 +364,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     letterSpacing: 0.2,
+    flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,200,160,0.1)',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.success,
+    letterSpacing: 0.3,
   },
   hint: {
     fontSize: 12,
@@ -341,6 +453,48 @@ const styles = StyleSheet.create({
     color: COLORS.textDim,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     flex: 1,
+  },
+  safFolderDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  safFolderInfo: {
+    flex: 1,
+  },
+  folderLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    letterSpacing: 0.2,
+  },
+  folderPath: {
+    fontSize: 12,
+    color: COLORS.text,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  folderActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  testBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   saveBtn: {
     flexDirection: 'row',

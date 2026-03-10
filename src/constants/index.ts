@@ -232,6 +232,7 @@ export const STORAGE_KEYS = {
   DOWNLOAD_HISTORY: '@download_history',
   DOWNLOAD_QUEUE_ORDER: '@download_queue_order',
   DEFAULT_DOWNLOAD_PATH: '@default_download_path',
+  SAF_DIRECTORY_URI: '@saf_directory_uri',
   SEARCH_HISTORY: '@search_history',
   USER_PREFERENCES: '@user_preferences',
 };
