@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/transparent-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#f2f4f8"
     },
@@ -25,7 +25,7 @@
       "versionCode": 1,
       "usesCleartextTraffic": true,
       "splash": {
-        "image": "./assets/splash-icon.png",
+        "image": "./assets/transparent-splash.png",
         "resizeMode": "contain",
         "backgroundColor": "#f2f4f8"
       },
@@ -43,7 +43,7 @@
       ],
       "adaptiveIcon": {
         "backgroundColor": "#3d7fff",
-        "foregroundImage": "./assets/android-icon-foreground.png"
+        "foregroundImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
