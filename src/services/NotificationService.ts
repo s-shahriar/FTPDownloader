@@ -140,7 +140,6 @@ class NotificationService {
         smallIcon: 'ic_check',
         color: '#00c8a0', // Success
         sound: 'default',
-        badge: true,
         pressAction: {
           id: 'open_downloads',
         },
