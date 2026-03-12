@@ -14,8 +14,8 @@ export const GEMINI_MODEL_LABELS: Record<GeminiModel, string> = {
   'gemini-3.1-flash-lite-preview': 'Flash Lite 3.1',
 };
 
-const GEMINI_API_KEY = 'AIzaSyBcjOlwNAHiiRZ3TNLqV3ds0usWhMJlKTA';
-const GEMINI_BASE    = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // ── Result type ────────────────────────────────────────────────────────────
 export type MediaIndustry =
@@ -76,6 +76,10 @@ export async function identifyMedia(
   query: string,
   model: GeminiModel,
 ): Promise<GeminiMatch[]> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY. Add it to your .env file.');
+  }
+
   const url = `${GEMINI_BASE}/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
   const prompt = `Search query: "${query}"

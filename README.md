@@ -22,12 +22,18 @@ A professional React Native Expo app for browsing and downloading media from FTP
    npm install
    ```
 
-2. Install EAS CLI (for building APKs):
+2. Create a local environment file for AI search:
+   ```bash
+   cp .env.example .env
+   ```
+   Then set `EXPO_PUBLIC_GEMINI_API_KEY` in `.env`.
+
+3. Install EAS CLI (for building APKs):
    ```bash
    npm install -g eas-cli
    ```
 
-3. Start the development server:
+4. Start the development server:
    ```bash
    npm start
    ```
