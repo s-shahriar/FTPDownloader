@@ -132,21 +132,24 @@ export class FTPClient {
   }
 
   /**
-   * For merged categories (e.g. English Movies), search all sources in parallel
-   * and return combined results tagged with their source label (720p, 1080p).
+   * For merged categories (e.g. English Movies, South Indian Movies), search all sources
+   * in parallel and return combined results tagged with their source label.
+   * Partial failures are reported via failedSources so the caller can warn the user.
    */
-  async searchMerged(category: Category, searchQuery: string, year: string): Promise<FTPItem[]> {
+  async searchMerged(
+    category: Category,
+    searchQuery: string,
+    year: string,
+  ): Promise<{ items: FTPItem[]; failedSources: string[] }> {
     if (!category.mergedSources || category.mergedSources.length === 0) {
       throw new Error('No merged sources defined for this category');
     }
 
     const query = searchQuery.toLowerCase().trim();
 
-    // Build URLs for all sources
     const searches = category.mergedSources.map(async (source) => {
       let url: string;
       if (source.yearFormat === 'none') {
-        // Flat listing — no year folder
         url = FTPClient.buildUrl(source.server, source.path);
       } else {
         const yearFolder = FTPClient.getYearFolder(source.yearFormat, year);
@@ -156,23 +159,21 @@ export class FTPClient {
       try {
         console.log(`[${source.label}] Searching: ${url}`);
         const items = await this.fetchDirectory(url);
-
-        // Filter matching folders and tag with source label
-        return items
+        const matched = items
           .filter(item => item.type === 'folder' && item.name.toLowerCase().includes(query))
-          .map(item => ({
-            ...item,
-            sourceLabel: source.label,
-          }));
+          .map(item => ({ ...item, sourceLabel: source.label }));
+        return { items: matched, failed: false, label: source.label };
       } catch (error) {
         console.warn(`[${source.label}] Search failed:`, error);
-        return []; // Don't fail the whole search if one source is down
+        return { items: [], failed: true, label: source.label };
       }
     });
 
-    // Run all searches in parallel
-    const resultArrays = await Promise.all(searches);
-    return resultArrays.flat();
+    const results = await Promise.all(searches);
+    return {
+      items: results.flatMap(r => r.items),
+      failedSources: results.filter(r => r.failed).map(r => r.label),
+    };
   }
 
   /**

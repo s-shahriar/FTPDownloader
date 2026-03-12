@@ -18,6 +18,8 @@ import { ResultItem } from '../components/ResultItem';
 import { FTPClient } from '../services/FTPClient';
 import { showAlert } from '../components/AlertModal';
 import { ErrorModal, ApiError } from '../components/ErrorModal';
+import { AISearchModal } from '../components/AISearchModal';
+import { GeminiMatch } from '../services/GeminiService';
 import { parseApiError } from '../utils/errorHandler';
 import { COLORS } from '../constants';
 import { FTPItem } from '../types';
@@ -34,8 +36,19 @@ export function HomeScreen({ navigation }: any) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [yearFocused, setYearFocused] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
 
   const needsYear = selectedCategory ? FTPClient.categoryNeedsYear(selectedCategory) : false;
+
+  const handleAISelect = (match: GeminiMatch) => {
+    setAiModalVisible(false);
+    if (match.category) {
+      dispatch({ type: 'SET_CATEGORY', payload: match.category });
+    }
+    if (match.year) {
+      setYear(match.year);
+    }
+  };
 
   const handleSearch = async () => {
     if (!selectedCategory) {
@@ -68,8 +81,15 @@ export function HomeScreen({ navigation }: any) {
       let filtered: FTPItem[];
 
       if (selectedCategory.type === 'movie_merged') {
-        filtered = await ftpClient.searchMerged(selectedCategory, searchQuery, year.trim());
-        console.log('Merged results:', filtered.length);
+        const { items: mergedItems, failedSources } = await ftpClient.searchMerged(selectedCategory, searchQuery, year.trim());
+        filtered = mergedItems;
+        console.log('Merged results:', filtered.length, 'Failed sources:', failedSources);
+        if (failedSources.length > 0) {
+          showAlert(
+            'Partial Results',
+            `Could not reach: ${failedSources.join(', ')}. Results shown may be incomplete.`,
+          );
+        }
       } else if (selectedCategory.type === 'movie_foreign') {
         filtered = await ftpClient.searchForeign(selectedCategory, searchQuery);
         console.log('Foreign results:', filtered.length);
@@ -184,7 +204,11 @@ export function HomeScreen({ navigation }: any) {
                 {selectedCategory.type === 'korean_tv_series' && 'Flat listing — no year needed'}
                 {selectedCategory.type === 'movie_flat' && 'Flat listing — no year needed'}
                 {selectedCategory.type === 'movie_with_year' && `Year required · format: ${selectedCategory.yearFormat === 'bare' ? 'YYYY' : selectedCategory.yearFormat === 'paren_1080p' ? '(YYYY) 1080p' : '(YYYY)'}`}
-                {selectedCategory.type === 'movie_merged' && 'Searches 720p + 1080p servers together'}
+                {selectedCategory.type === 'movie_merged' && (
+                  selectedCategory.mergedSources
+                    ? `Searches ${selectedCategory.mergedSources.map(s => s.label).join(' + ')} together`
+                    : 'Searches multiple sources together'
+                )}
                 {selectedCategory.type === 'movie_foreign' && 'Searches all language folders — no year needed'}
                 {selectedCategory.type === 'anime_series' && 'Auto-routes by first letter (A-F, G-M, N-S, T-Z)'}
               </Text>
@@ -194,20 +218,34 @@ export function HomeScreen({ navigation }: any) {
           {/* Search */}
           <Text style={styles.sectionLabel}>Search Content</Text>
           <View style={styles.searchGroup}>
-            <View style={[styles.inputWrap, searchFocused && styles.inputFocused]}>
-              <MaterialIcons name="live-tv" size={16} color={searchFocused ? COLORS.primary : COLORS.textDim} style={styles.inputIcon} />
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="Movie / Series name…"
-                placeholderTextColor={COLORS.textDim}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                onSubmitEditing={handleSearch}
-              />
+            <View style={styles.searchInputRow}>
+              <View style={[styles.inputWrap, styles.inputWrapFlex, searchFocused && styles.inputFocused]}>
+                <MaterialIcons name="live-tv" size={16} color={searchFocused ? COLORS.primary : COLORS.textDim} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="Movie / Series name…"
+                  placeholderTextColor={COLORS.textDim}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  onSubmitEditing={handleSearch}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.aiBtnInline}
+                onPress={() => {
+                  if (!searchQuery.trim()) {
+                    showAlert('Enter a title', 'Type a movie or series name first');
+                    return;
+                  }
+                  setAiModalVisible(true);
+                }}
+              >
+                <MaterialIcons name="auto-awesome" size={20} color="#fff" />
+              </TouchableOpacity>
             </View>
 
             {needsYear && (
@@ -294,6 +332,14 @@ export function HomeScreen({ navigation }: any) {
         visible={error !== null}
         error={error}
         onClose={() => setError(null)}
+      />
+
+      {/* AI Search Modal */}
+      <AISearchModal
+        visible={aiModalVisible}
+        query={searchQuery}
+        onClose={() => setAiModalVisible(false)}
+        onSelect={handleAISelect}
       />
     </Wrapper>
   );
@@ -406,6 +452,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
     gap: 10,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  inputWrapFlex: {
+    flex: 1,
+  },
+  aiBtnInline: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: COLORS.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 20px rgba(108,92,231,0.4)' as any },
+      android: { elevation: 4 },
+    }),
   },
   inputWrap: {
     flexDirection: 'row',

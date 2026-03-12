@@ -196,6 +196,17 @@ export function SearchResultsScreen({ route, navigation }: any) {
         />
       )}
 
+      {/* Bottom bar — Downloads CTA */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.downloadsCta}
+          onPress={() => navigation.navigate('Downloads')}
+        >
+          <MaterialIcons name="download" size={20} color="#1a0e00" />
+          <Text style={styles.downloadsCtaText}>My Downloads</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Error Modal */}
       <ErrorModal
         visible={error !== null}
@@ -307,6 +318,35 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 13,
     color: COLORS.textSecondary,
+  },
+
+  // ── Bottom bar ──
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  downloadsCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
+    paddingVertical: 15,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 24px rgba(232,160,32,0.35)' as any },
+      android: { elevation: 6 },
+    }),
+  },
+  downloadsCtaText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a0e00',
+    letterSpacing: 0.3,
   },
 
   // ── Empty state ──
