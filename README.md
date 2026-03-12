@@ -69,16 +69,21 @@ The build is configured with the following optimizations in [eas.json](eas.json)
 
 1. **First Launch**: The app will request storage permissions. Grant permissions to enable downloads.
 
-2. **Search for Media**:
+2. **Configure API Key (for AI Search)**:
+   - Open **Downloads** tab → tap the **Settings (gear)** button
+   - Paste your Gemini key into **API KEY**
+   - Tap **Save Settings**
+
+3. **Search for Media**:
    - Select a category from the dropdown
    - Enter the movie/series name in the search bar
    - Tap the search button or press Enter
 
-3. **Browse Results**:
+4. **Browse Results**:
    - Tap on folders to navigate deeper
    - Tap the download icon on video files to start downloading
 
-4. **Manage Downloads**:
+5. **Manage Downloads**:
    - View all downloads in the Downloads screen
    - Pause/Resume/Cancel active downloads
    - Retry failed downloads
