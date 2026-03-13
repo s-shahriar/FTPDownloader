@@ -67,7 +67,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
     if (visible && query.trim()) {
       runSearch(query, model);
     }
-  }, [visible]);
+  }, [visible, query, runSearch]);
 
   // Reset when closed
   useEffect(() => {
