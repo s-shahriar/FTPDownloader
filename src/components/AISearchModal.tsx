@@ -103,6 +103,8 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
   const needsYear = (cat: Category | null): boolean =>
     cat ? FTPClient.categoryNeedsYear(cat) : false;
 
+  console.log('[AISearchModal] Render - loading:', loading, 'error:', error, 'results:', results.length, 'visible:', visible);
+
   return (
     <Modal
       visible={visible}
@@ -182,7 +184,11 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
             )}
 
             {/* Results */}
-            {!loading && !error && results.length > 0 && (
+            {(() => {
+              const shouldShow = !loading && !error && results.length > 0;
+              console.log('[AISearchModal] Results section - shouldShow:', shouldShow, 'loading:', loading, 'error:', error, 'results.length:', results.length);
+              return shouldShow;
+            })() && (
               <>
                 <View style={styles.resultsHintRow}>
                   <Text style={styles.resultsHint}>
