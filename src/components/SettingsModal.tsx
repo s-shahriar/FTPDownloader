@@ -8,7 +8,6 @@ import {
   Platform,
   TextInput,
   Animated,
-  KeyboardAvoidingView,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -17,6 +16,7 @@ import { safPermissionService } from '../services/SAFPermissionService';
 import { useApp } from '../contexts/AppContext';
 import { showAlert } from './AlertModal';
 import { showToast } from './Toast';
+import { getGeminiApiKey, setGeminiApiKey } from '../services/GeminiService';
 import { COLORS } from '../constants';
 
 interface SettingsModalProps {
@@ -29,6 +29,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [defaultPath, setDefaultPath] = useState('');
   const [safFolderName, setSAFFolderName] = useState('');
   const [isSAFConfigured, setIsSAFConfigured] = useState(false);
+  const [apiKey, setApiKey] = useState('');
   const { dispatch } = useApp();
 
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -39,6 +40,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       const current = downloadManager.getDefaultDownloadPath();
       setDownloadPath(current);
       setDefaultPath(FileSystem.documentDirectory || '');
+
+      getGeminiApiKey().then(setApiKey);
 
       // Load SAF configuration
       const safConfigured = safPermissionService.isSAFConfigured();
@@ -92,7 +95,8 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       return;
     }
     await downloadManager.setDefaultDownloadPath(trimmed);
-    showAlert('Saved', 'Download location updated. New downloads will use this path.');
+    await setGeminiApiKey(apiKey);
+    showAlert('Saved', 'Download location and API key updated.');
     handleClose();
   };
 
@@ -288,6 +292,30 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   </Text>
                 </View>
               )}
+            </View>
+
+            {/* AI Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialIcons name="vpn-key" size={16} color={COLORS.primary} />
+                <Text style={styles.sectionTitle}>API KEY</Text>
+              </View>
+
+              <Text style={styles.hint}>
+                Paste your Gemini API key used by AI suggestions.
+              </Text>
+
+              <View style={styles.pathInput}>
+                <TextInput
+                  style={styles.pathTextInput}
+                  value={apiKey}
+                  onChangeText={setApiKey}
+                  placeholder="Enter Gemini API key…"
+                  placeholderTextColor={COLORS.textDim}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
             </View>
 
           {/* Save button */}

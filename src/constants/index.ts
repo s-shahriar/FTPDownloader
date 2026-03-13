@@ -235,4 +235,5 @@ export const STORAGE_KEYS = {
   SAF_DIRECTORY_URI: '@saf_directory_uri',
   SEARCH_HISTORY: '@search_history',
   USER_PREFERENCES: '@user_preferences',
+  GEMINI_API_KEY: '@gemini_api_key',
 };

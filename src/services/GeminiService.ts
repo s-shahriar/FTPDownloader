@@ -1,4 +1,5 @@
-import { CATEGORIES } from '../constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CATEGORIES, STORAGE_KEYS } from '../constants';
 import { Category } from '../types';
 
 // ── Model IDs ──────────────────────────────────────────────────────────────
@@ -14,8 +15,35 @@ export const GEMINI_MODEL_LABELS: Record<GeminiModel, string> = {
   'gemini-3.1-flash-lite-preview': 'Flash Lite 3.1',
 };
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+let inMemoryApiKey: string | null = null;
+
+export async function getGeminiApiKey(): Promise<string> {
+  if (inMemoryApiKey !== null) {
+    return inMemoryApiKey;
+  }
+
+  try {
+    const stored = await AsyncStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY);
+    inMemoryApiKey = stored?.trim() || '';
+  } catch {
+    inMemoryApiKey = '';
+  }
+
+  return inMemoryApiKey;
+}
+
+export async function setGeminiApiKey(apiKey: string): Promise<void> {
+  const trimmed = apiKey.trim();
+  inMemoryApiKey = trimmed;
+
+  if (trimmed) {
+    await AsyncStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY, trimmed);
+    return;
+  }
+
+  await AsyncStorage.removeItem(STORAGE_KEYS.GEMINI_API_KEY);
+}
 
 // ── Result type ────────────────────────────────────────────────────────────
 export type MediaIndustry =
@@ -40,16 +68,6 @@ export interface GeminiMatch {
   category: Category | null; // mapped from industry + type
 }
 
-// ── Category mapping – mirrors FTPDownloader's route structure ─────────────
-//
-//  movie_merged   (needsYear=true):  ENGLISH_MOVIES, SOUTH_INDIAN_MOVIES, ANIMATION_MOVIES
-//  movie_with_year(needsYear=true):  HINDI_MOVIES
-//  movie_flat     (needsYear=false): KOREAN_MOVIES, JAPANESE_MOVIES, CHINESE_MOVIES
-//  tv_series      (needsYear=false): TV_WEB_SERIES
-//  korean_tv_series(needsYear=false):KOREAN_TV_SERIES
-//  anime_series   (needsYear=false): ANIME_CARTOON
-//  movie_foreign  (needsYear=false): FOREIGN_MOVIES
-
 function mapToCategory(industry: MediaIndustry, type: MediaType): Category | null {
   if (type === 'tv_series') {
     if (industry === 'Korean')  return CATEGORIES.KOREAN_TV_SERIES;
@@ -71,16 +89,16 @@ function mapToCategory(industry: MediaIndustry, type: MediaType): Category | nul
   }
 }
 
-// ── Gemini API call ────────────────────────────────────────────────────────
 export async function identifyMedia(
   query: string,
   model: GeminiModel,
 ): Promise<GeminiMatch[]> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY. Add it to your .env file.');
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error('Missing API key. Open Settings → API KEY, paste your Gemini API key, then tap Save Settings.');
   }
 
-  const url = `${GEMINI_BASE}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
 
   const prompt = `Search query: "${query}"
 
@@ -97,10 +115,9 @@ No markdown. No explanation. JSON array only.`;
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],   // ground with live Google Search
+      tools: [{ google_search: {} }],
       generationConfig: {
         temperature: 0.1,
-        // NOTE: responseMimeType cannot be used with google_search grounding
       },
     }),
   });
@@ -119,7 +136,6 @@ No markdown. No explanation. JSON array only.`;
 
   if (!text) throw new Error('Empty response from Gemini');
 
-  // Strip markdown code fences if present
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (jsonMatch) text = jsonMatch[0];
 
@@ -127,15 +143,14 @@ No markdown. No explanation. JSON array only.`;
   return raw
     .filter(m => m.title && m.industry && m.type)
     .map(m => ({
-      title:    String(m.title),
-      year:     m.year ? String(m.year) : null,
+      title: String(m.title),
+      year: m.year ? String(m.year) : null,
       industry: m.industry as MediaIndustry,
-      type:     m.type as MediaType,
+      type: m.type as MediaType,
       language: String(m.language ?? ''),
       category: mapToCategory(m.industry, m.type),
     }))
     .sort((a, b) => {
-      // Sort by year descending (newest first), nulls last
       if (!a.year && !b.year) return 0;
       if (!a.year) return 1;
       if (!b.year) return -1;
