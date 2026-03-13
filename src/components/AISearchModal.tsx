@@ -297,6 +297,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '85%',
+    minHeight: '60%',
     paddingBottom: Platform.OS === 'ios' ? 32 : 20,
     ...Platform.select({
       android: { elevation: 24 },
@@ -402,6 +403,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 12,
     gap: 10,
+    flexGrow: 1,
   },
   resultsHintRow: {
     flexDirection: 'row',
