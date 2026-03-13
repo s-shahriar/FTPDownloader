@@ -47,23 +47,15 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
   const [error,   setError]   = useState<string | null>(null);
 
   const runSearch = useCallback(async (q: string, m: GeminiModel) => {
-    console.log('[AISearchModal] runSearch called with query:', q, 'model:', m);
-    if (!q.trim()) {
-      console.log('[AISearchModal] Empty query, skipping');
-      return;
-    }
-    console.log('[AISearchModal] Starting search...');
+    if (!q.trim()) return;
     setLoading(true);
     setError(null);
     setResults([]);
     try {
-      console.log('[AISearchModal] Calling identifyMedia...');
       const matches = await identifyMedia(q.trim(), m);
-      console.log('[AISearchModal] Got results:', matches.length, 'matches');
       setResults(matches);
       if (matches.length === 0) setError('No matches found. Try a different title.');
     } catch (e: any) {
-      console.error('[AISearchModal] Error:', e);
       setError(e?.message || 'Failed to reach Gemini. Check your connection.');
     } finally {
       setLoading(false);
@@ -72,12 +64,8 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
 
   // Auto-search only when modal first opens — model switching does NOT re-trigger
   useEffect(() => {
-    console.log('[AISearchModal] useEffect triggered - visible:', visible, 'query:', query);
     if (visible && query.trim()) {
-      console.log('[AISearchModal] Conditions met, calling runSearch');
       runSearch(query, model);
-    } else {
-      console.log('[AISearchModal] Conditions not met - visible:', visible, 'query:', query.trim());
     }
   }, [visible, query, runSearch]);
 
@@ -102,8 +90,6 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
 
   const needsYear = (cat: Category | null): boolean =>
     cat ? FTPClient.categoryNeedsYear(cat) : false;
-
-  console.log('[AISearchModal] Render - loading:', loading, 'error:', error, 'results:', results.length, 'visible:', visible);
 
   return (
     <Modal
@@ -184,11 +170,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
             )}
 
             {/* Results */}
-            {(() => {
-              const shouldShow = !loading && !error && results.length > 0;
-              console.log('[AISearchModal] Results section - shouldShow:', shouldShow, 'loading:', loading, 'error:', error, 'results.length:', results.length);
-              return shouldShow;
-            })() && (
+            {!loading && !error && results.length > 0 && (
               <>
                 <View style={styles.resultsHintRow}>
                   <Text style={styles.resultsHint}>
