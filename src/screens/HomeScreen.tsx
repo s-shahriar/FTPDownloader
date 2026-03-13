@@ -237,10 +237,12 @@ export function HomeScreen({ navigation }: any) {
               <TouchableOpacity
                 style={styles.aiBtnInline}
                 onPress={() => {
+                  console.log('[AI Button] Clicked with query:', searchQuery);
                   if (!searchQuery.trim()) {
                     showAlert('Enter a title', 'Type a movie or series name first');
                     return;
                   }
+                  console.log('[AI Button] Opening modal');
                   setAiModalVisible(true);
                 }}
               >

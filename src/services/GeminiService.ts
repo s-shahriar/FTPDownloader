@@ -93,12 +93,16 @@ export async function identifyMedia(
   query: string,
   model: GeminiModel,
 ): Promise<GeminiMatch[]> {
+  console.log('[GeminiService] identifyMedia called with query:', query, 'model:', model);
   const apiKey = await getGeminiApiKey();
+  console.log('[GeminiService] API key retrieved:', apiKey ? `${apiKey.substring(0, 10)}...` : 'EMPTY');
   if (!apiKey) {
+    console.error('[GeminiService] No API key found!');
     throw new Error('Missing API key. Open Settings → API KEY, paste your Gemini API key, then tap Save Settings.');
   }
 
   const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+  console.log('[GeminiService] Making request to:', url.replace(apiKey, 'API_KEY_HIDDEN'));
 
   const prompt = `Search query: "${query}"
 
@@ -110,6 +114,7 @@ export async function identifyMedia(
 South Indian = Tamil/Telugu/Malayalam/Kannada. Bollywood = Hindi Indian films. Anime = Japanese animation.
 No markdown. No explanation. JSON array only.`;
 
+  console.log('[GeminiService] Sending request...');
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -122,19 +127,27 @@ No markdown. No explanation. JSON array only.`;
     }),
   });
 
+  console.log('[GeminiService] Response status:', res.status);
+
   if (!res.ok) {
     let msg = `Gemini API error ${res.status}`;
     try {
       const err = await res.json();
+      console.error('[GeminiService] API error response:', err);
       msg = err?.error?.message || msg;
     } catch {}
     throw new Error(msg);
   }
 
   const data = await res.json();
+  console.log('[GeminiService] Response data:', JSON.stringify(data).substring(0, 200));
   let text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-  if (!text) throw new Error('Empty response from Gemini');
+  if (!text) {
+    console.error('[GeminiService] Empty text response!');
+    throw new Error('Empty response from Gemini');
+  }
+  console.log('[GeminiService] Extracted text:', text.substring(0, 100));
 
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (jsonMatch) text = jsonMatch[0];
