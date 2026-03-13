@@ -42,8 +42,9 @@
         "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#3d7fff",
-        "foregroundImage": "./assets/icon.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/icon-foreground.png",
+        "monochromeImage": "./assets/monochrome-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
