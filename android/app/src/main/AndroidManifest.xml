@@ -37,5 +37,12 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <receiver android:name=".modules.CustomNotificationReceiver" android:exported="false">
+      <intent-filter>
+        <action android:name="ACTION_PAUSE_DOWNLOAD"/>
+        <action android:name="ACTION_RESUME_DOWNLOAD"/>
+        <action android:name="ACTION_CANCEL_DOWNLOAD"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

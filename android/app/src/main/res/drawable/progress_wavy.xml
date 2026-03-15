@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background with subtle waves -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <corners android:radius="3dp" />
+            <solid android:color="#22000000" />
+        </shape>
+    </item>
+
+    <!-- Progress with animated gradient and waves -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <layer-list>
+                <!-- Base gradient layer -->
+                <item>
+                    <shape android:shape="rectangle">
+                        <corners android:radius="3dp" />
+                        <gradient
+                            android:startColor="#1976D2"
+                            android:centerColor="#2196F3"
+                            android:endColor="#03A9F4"
+                            android:angle="0" />
+                    </shape>
+                </item>
+                <!-- Shimmer overlay effect -->
+                <item android:top="0dp">
+                    <shape android:shape="rectangle">
+                        <corners android:radius="3dp" />
+                        <gradient
+                            android:startColor="#00FFFFFF"
+                            android:centerColor="#40FFFFFF"
+                            android:endColor="#00FFFFFF"
+                            android:angle="0" />
+                    </shape>
+                </item>
+            </layer-list>
+        </clip>
+    </item>
+</layer-list>

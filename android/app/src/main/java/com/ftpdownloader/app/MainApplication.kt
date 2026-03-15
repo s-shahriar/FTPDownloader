@@ -14,6 +14,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 import com.ftpdownloader.app.modules.SAFPermissionsPackage
+import com.ftpdownloader.app.modules.CustomNotificationPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -25,6 +26,7 @@ class MainApplication : Application(), ReactApplication {
           // Packages that cannot be autolinked yet can be added manually here, for example:
           // add(MyReactNativePackage())
           add(SAFPermissionsPackage())
+          add(CustomNotificationPackage())
         }
     )
   }

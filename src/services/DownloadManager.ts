@@ -69,6 +69,11 @@ export class DownloadManager {
     await this.loadDownloads();
     await this.loadDefaultDownloadPath();
     this.restoreQueue();
+    
+    // Connect custom notification actions back to download manager
+    notificationService.onPauseAction = (id) => this.pauseDownload(id);
+    notificationService.onResumeAction = (id) => this.resumeDownload(id);
+    notificationService.onCancelAction = (id) => this.cancelDownload(id);
   }
 
   private async loadDownloads(): Promise<void> {

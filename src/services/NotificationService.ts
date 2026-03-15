@@ -1,5 +1,8 @@
 import notifee, { AndroidStyle, AndroidImportance, EventType } from '@notifee/react-native';
-import { Platform } from 'react-native';
+import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
+
+const { CustomNotificationModule } = NativeModules;
+const customNotificationEmitter = CustomNotificationModule ? new NativeEventEmitter(CustomNotificationModule as any) : null;
 
 interface DownloadNotificationData {
   id: string;
@@ -24,7 +27,27 @@ class NotificationService {
   private lastUpdateTime: Map<string, number> = new Map();
   private readonly UPDATE_THROTTLE_MS = 2000;
 
-  private constructor() {}
+  public onPauseAction?: (id: string) => void;
+  public onResumeAction?: (id: string) => void;
+  public onCancelAction?: (id: string) => void;
+
+  private constructor() {
+    this.setupEventListeners();
+  }
+
+  private setupEventListeners() {
+    if (customNotificationEmitter) {
+      customNotificationEmitter.addListener('onNotificationPause', (id: string) => {
+        this.onPauseAction?.(id);
+      });
+      customNotificationEmitter.addListener('onNotificationResume', (id: string) => {
+        this.onResumeAction?.(id);
+      });
+      customNotificationEmitter.addListener('onNotificationCancel', (id: string) => {
+        this.onCancelAction?.(id);
+      });
+    }
+  }
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -377,6 +400,26 @@ class NotificationService {
   }
 
   private async showDownloadNotification(data: DownloadNotificationData) {
+    if (Platform.OS === 'android' && CustomNotificationModule) {
+      const isPaused = data.status === 'paused';
+      
+      const speedText = data.speed > 0 ? this.formatSpeed(data.speed) : '';
+      const etaText = data.eta > 0 ? this.formatTime(data.eta) + ' left' : '';
+      const statusText = isPaused ? 'Paused' : (speedText ? `${speedText} • ${etaText}` : '');
+      
+      CustomNotificationModule.showNotification(data.id, {
+        title: data.filename,
+        subtitle: `${this.formatBytes(data.downloadedBytes)} / ${this.formatBytes(data.totalBytes)}`,
+        progress: data.progress,
+        percentText: `${data.progress}%`,
+        statusText: statusText,
+        isPaused: isPaused
+      });
+      
+      this.notificationMap.set(data.id, data.id);
+      return;
+    }
+
     const notificationId = `download_${data.id}`;
 
     // Beautiful title with category emoji
@@ -435,7 +478,7 @@ class NotificationService {
               }
             : undefined,
         style: {
-          type: AndroidStyle.BIGTEXT,
+           type: AndroidStyle.BIGTEXT,
           text: expandedText,
         },
         actions,
@@ -458,6 +501,12 @@ class NotificationService {
   }
 
   async dismissDownloadNotification(id: string) {
+    if (Platform.OS === 'android' && CustomNotificationModule) {
+      CustomNotificationModule.cancelNotification(id);
+      this.notificationMap.delete(id);
+      return;
+    }
+    
     const notificationId = this.notificationMap.get(id);
     if (notificationId) {
       await notifee.cancelNotification(notificationId);
