@@ -84,7 +84,7 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
       case DOWNLOAD_STATUS.QUEUED:
         return 'Queued — waiting for slot…';
       case DOWNLOAD_STATUS.DOWNLOADING: {
-        const parts = [`Downloading ${progressPercent}%`];
+        const parts = [`${progressPercent}%`];
         if (download.speed > 0) {
           parts.push(formatSpeed(download.speed));
         }

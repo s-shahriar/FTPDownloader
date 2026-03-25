@@ -94,6 +94,32 @@ export function DownloadsScreen({ navigation }: any) {
   };
 
   const handleDelete = async (id: string) => {
+    // Use a closure variable to track checkbox state
+    let shouldDeleteFromDisk = true;
+
+    const CheckboxContent = () => {
+      const [checked, setChecked] = useState(true);
+
+      return (
+        <TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => {
+            const newValue = !checked;
+            setChecked(newValue);
+            shouldDeleteFromDisk = newValue;
+          }}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons
+            name={checked ? "check-box" : "check-box-outline-blank"}
+            size={24}
+            color={COLORS.primary}
+          />
+          <Text style={styles.checkboxLabel}>Also delete file from device</Text>
+        </TouchableOpacity>
+      );
+    };
+
     showAlert(
       'Delete Download',
       'Are you sure you want to delete this download?',
@@ -102,15 +128,42 @@ export function DownloadsScreen({ navigation }: any) {
         {
           text: 'Yes',
           onPress: async () => {
-            await downloadManager.deleteDownload(id);
+            await downloadManager.deleteDownload(id, shouldDeleteFromDisk);
             dispatch({ type: 'REMOVE_DOWNLOAD', payload: id });
           },
         },
-      ]
+      ],
+      { customContent: <CheckboxContent /> }
     );
   };
 
   const handleClearCompleted = () => {
+    // Use a closure variable to track checkbox state
+    let shouldDeleteFromDisk = true;
+
+    const CheckboxContent = () => {
+      const [checked, setChecked] = useState(true);
+
+      return (
+        <TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => {
+            const newValue = !checked;
+            setChecked(newValue);
+            shouldDeleteFromDisk = newValue;
+          }}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons
+            name={checked ? "check-box" : "check-box-outline-blank"}
+            size={24}
+            color={COLORS.primary}
+          />
+          <Text style={styles.checkboxLabel}>Also delete files from device</Text>
+        </TouchableOpacity>
+      );
+    };
+
     showAlert(
       'Clear Completed',
       'Delete all completed and cancelled downloads?',
@@ -119,12 +172,13 @@ export function DownloadsScreen({ navigation }: any) {
         {
           text: 'Yes',
           onPress: async () => {
-            await downloadManager.clearCompletedDownloads();
+            await downloadManager.clearCompletedDownloads(shouldDeleteFromDisk);
             const allDownloads = downloadManager.getAllDownloads();
             dispatch({ type: 'SET_DOWNLOADS', payload: allDownloads });
           },
         },
-      ]
+      ],
+      { customContent: <CheckboxContent /> }
     );
   };
 
@@ -576,5 +630,16 @@ const styles = StyleSheet.create({
   tipBold: {
     color: COLORS.text,
     fontWeight: '600',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
   },
 });

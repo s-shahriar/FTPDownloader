@@ -726,7 +726,7 @@ export class DownloadManager {
     }
   }
 
-  async deleteDownload(id: string): Promise<void> {
+  async deleteDownload(id: string, deleteFromDisk: boolean = true): Promise<void> {
     const item = this.downloads.get(id);
     if (!item) return;
 
@@ -738,32 +738,36 @@ export class DownloadManager {
     // Remove from queue
     this.queue = this.queue.filter(qid => qid !== id);
 
-    // Delete local file (native only)
-    try {
-      if (item.localPath && Platform.OS !== 'web') {
-        // Check if this is a SAF URI (content://)
-        if (item.localPath.startsWith('content://')) {
-          console.log(`🗑️ Deleting SAF file: ${item.localPath}`);
-          const deleted = await safPermissionService.deleteFileFromSAF(item.localPath);
-          if (deleted) {
-            console.log(`✓ SAF file deleted successfully`);
+    // Delete local file (native only) - optional based on parameter
+    if (deleteFromDisk) {
+      try {
+        if (item.localPath && Platform.OS !== 'web') {
+          // Check if this is a SAF URI (content://)
+          if (item.localPath.startsWith('content://')) {
+            console.log(`🗑️ Deleting SAF file: ${item.localPath}`);
+            const deleted = await safPermissionService.deleteFileFromSAF(item.localPath);
+            if (deleted) {
+              console.log(`✓ SAF file deleted successfully`);
+            } else {
+              console.warn(`⚠️ Failed to delete SAF file (may already be deleted)`);
+            }
           } else {
-            console.warn(`⚠️ Failed to delete SAF file (may already be deleted)`);
-          }
-        } else {
-          // Regular file path (MediaLibrary or cache)
-          const fileInfo = await FileSystem.getInfoAsync(item.localPath);
-          if (fileInfo.exists) {
-            await FileSystem.deleteAsync(item.localPath, { idempotent: true });
-            console.log(`✓ Deleted file: ${item.localPath}`);
-          } else {
-            console.log(`⚠️ File doesn't exist: ${item.localPath}`);
+            // Regular file path (MediaLibrary or cache)
+            const fileInfo = await FileSystem.getInfoAsync(item.localPath);
+            if (fileInfo.exists) {
+              await FileSystem.deleteAsync(item.localPath, { idempotent: true });
+              console.log(`✓ Deleted file: ${item.localPath}`);
+            } else {
+              console.log(`⚠️ File doesn't exist: ${item.localPath}`);
+            }
           }
         }
+      } catch (error) {
+        console.error('❌ Failed to delete file:', error);
+        // Don't throw - allow download record to be removed even if file delete fails
       }
-    } catch (error) {
-      console.error('❌ Failed to delete file:', error);
-      // Don't throw - allow download record to be removed even if file delete fails
+    } else {
+      console.log('⊘ Keeping file on disk, only removing from download list');
     }
 
     this.downloads.delete(id);
@@ -844,14 +848,14 @@ export class DownloadManager {
   }
 
   // ── Bulk operations ────────────────────────────────────
-  async clearCompletedDownloads(): Promise<void> {
+  async clearCompletedDownloads(deleteFromDisk: boolean = true): Promise<void> {
     const completed = Array.from(this.downloads.values()).filter(
       item => item.status === DOWNLOAD_STATUS.COMPLETED ||
               item.status === DOWNLOAD_STATUS.CANCELLED
     );
 
     for (const item of completed) {
-      await this.deleteDownload(item.id);
+      await this.deleteDownload(item.id, deleteFromDisk);
     }
   }
 

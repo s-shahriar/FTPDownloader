@@ -24,6 +24,7 @@ interface AlertConfig {
   buttons?: AlertButton[];
   icon?: React.ComponentProps<typeof MaterialIcons>['name'];
   iconColor?: string;
+  customContent?: React.ReactNode;
 }
 
 // ── Singleton emitter ────────────────────────────────────
@@ -34,7 +35,7 @@ export function showAlert(
   title: string,
   message?: string,
   buttons?: AlertButton[],
-  options?: { icon?: AlertConfig['icon']; iconColor?: string }
+  options?: { icon?: AlertConfig['icon']; iconColor?: string; customContent?: React.ReactNode }
 ) {
   _alertListener?.({
     title,
@@ -42,6 +43,7 @@ export function showAlert(
     buttons: buttons || [{ text: 'OK' }],
     icon: options?.icon,
     iconColor: options?.iconColor,
+    customContent: options?.customContent,
   });
 }
 
@@ -169,6 +171,13 @@ export function AlertHost() {
               <Text style={styles.message}>{config.message}</Text>
             ) : null}
 
+            {/* Custom Content */}
+            {config.customContent ? (
+              <View style={styles.customContent}>
+                {config.customContent}
+              </View>
+            ) : null}
+
             {/* Buttons */}
             <View style={styles.buttonContainer}>
               {hasCancel && cancelButton && (
@@ -262,6 +271,10 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 20,
+  },
+  customContent: {
+    width: '100%',
     marginBottom: 20,
   },
   buttonContainer: {

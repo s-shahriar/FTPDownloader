@@ -9,12 +9,14 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useApp } from '../contexts/AppContext';
 import { CategoryDropdown } from '../components/CategoryDropdown';
 import { ResultItem } from '../components/ResultItem';
+import { SearchHistorySection } from '../components/SearchHistorySection';
 import { FTPClient } from '../services/FTPClient';
 import { showAlert } from '../components/AlertModal';
 import { ErrorModal, ApiError } from '../components/ErrorModal';
@@ -27,7 +29,7 @@ import { FTPItem } from '../types';
 const Wrapper = Platform.OS === 'web' ? View : SafeAreaView;
 
 export function HomeScreen({ navigation }: any) {
-  const { selectedCategory, dispatch, categories } = useApp();
+  const { selectedCategory, dispatch, categories, searchHistory, saveSearchHistory, clearSearchHistory } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [year, setYear] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +39,7 @@ export function HomeScreen({ navigation }: any) {
   const [yearFocused, setYearFocused] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   const needsYear = selectedCategory ? FTPClient.categoryNeedsYear(selectedCategory) : false;
 
@@ -118,6 +121,8 @@ export function HomeScreen({ navigation }: any) {
         showAlert('No Results', `No results found for "${searchQuery}"${yearInfo}`);
       } else {
         setSearchResults(filtered);
+        // Save to search history after successful search
+        await saveSearchHistory(searchQuery, selectedCategory.name);
       }
     } catch (err: any) {
       console.error('Search error:', err);
@@ -159,6 +164,70 @@ export function HomeScreen({ navigation }: any) {
     dispatch({ type: 'SET_CATEGORY', payload: category });
     setSearchResults([]);
     // Keep film name and year when category changes - don't reset them
+  };
+
+  const handleHistorySelect = async (item: any) => {
+    const category = categories.find(c => c.name === item.category);
+    if (!category) return;
+
+    // Set the category and query
+    dispatch({ type: 'SET_CATEGORY', payload: category });
+    setSearchQuery(item.query);
+    setIsLoading(true);
+
+    try {
+      const ftpClient = new FTPClient();
+      const needsYear = FTPClient.categoryNeedsYear(category);
+
+      let filtered: FTPItem[];
+
+      if (category.type === 'movie_merged') {
+        const { items: mergedItems } = await ftpClient.searchMerged(category, item.query, '');
+        filtered = mergedItems;
+      } else if (category.type === 'movie_foreign') {
+        filtered = await ftpClient.searchForeign(category, item.query);
+      } else {
+        const searchUrl = FTPClient.buildSearchUrl(category, item.query, undefined);
+        const items = await ftpClient.fetchDirectory(searchUrl);
+        filtered = items.filter((ftpItem: FTPItem) => {
+          return ftpItem.type === 'folder' &&
+            ftpItem.name.toLowerCase().includes(item.query.toLowerCase().trim());
+        });
+      }
+
+      if (filtered.length === 0) {
+        showAlert('No Results', `No results found for "${item.query}"`);
+      } else if (filtered.length === 1) {
+        // Single result - navigate directly to folder contents
+        navigation.navigate('SearchResults', {
+          folderUrl: filtered[0].url,
+          folderName: filtered[0].name,
+          category: category,
+          query: item.query,
+        });
+      } else {
+        // Multiple results - show them on home screen for selection
+        setSearchResults(filtered);
+      }
+    } catch (err: any) {
+      console.error('History search error:', err);
+      const searchUrl = category.server + category.path;
+      const apiError = parseApiError(err, searchUrl);
+      setError(apiError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearHistory = () => {
+    showAlert(
+      'Clear History',
+      'Delete all search history?',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Yes', onPress: clearSearchHistory },
+      ]
+    );
   };
 
   return (
@@ -234,6 +303,14 @@ export function HomeScreen({ navigation }: any) {
                   onSubmitEditing={handleSearch}
                 />
               </View>
+              {searchHistory.length > 0 && (
+                <TouchableOpacity
+                  style={styles.historyBtnInline}
+                  onPress={() => setHistoryModalVisible(true)}
+                >
+                  <MaterialIcons name="history" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.aiBtnInline}
                 onPress={() => {
@@ -297,6 +374,7 @@ export function HomeScreen({ navigation }: any) {
             )}
           </View>
 
+
           {/* Search Results */}
           {searchResults.length > 0 && (
             <View style={styles.resultsContainer}>
@@ -341,6 +419,43 @@ export function HomeScreen({ navigation }: any) {
         onClose={() => setAiModalVisible(false)}
         onSelect={handleAISelect}
       />
+
+      {/* Search History Modal */}
+      <Modal
+        visible={historyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setHistoryModalVisible(false)}
+        >
+          <View style={styles.historyModal}>
+            <TouchableOpacity activeOpacity={1}>
+              <View style={styles.historyModalHeader}>
+                <Text style={styles.historyModalTitle}>Recent Searches</Text>
+                <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                  <MaterialIcons name="close" size={24} color={COLORS.text} />
+                </TouchableOpacity>
+              </View>
+              <SearchHistorySection
+                history={searchHistory}
+                onSelect={(item) => {
+                  setHistoryModalVisible(false);
+                  handleHistorySelect(item);
+                }}
+                onClear={() => {
+                  handleClearHistory();
+                  setHistoryModalVisible(false);
+                }}
+                categories={categories}
+              />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Wrapper>
   );
 }
@@ -461,6 +576,19 @@ const styles = StyleSheet.create({
   inputWrapFlex: {
     flex: 1,
   },
+  historyBtnInline: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: COLORS.textSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 20px rgba(107,115,148,0.3)' as any },
+      android: { elevation: 3 },
+    }),
+  },
   aiBtnInline: {
     width: 52,
     height: 52,
@@ -555,6 +683,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
+  // ── History ──
+  historySection: {
+    marginHorizontal: 16,
+    marginTop: 4,
+  },
+
   // ── Results ──
   resultsContainer: {
     marginVertical: 8,
@@ -597,5 +731,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1a0e00',
     letterSpacing: 0.3,
+  },
+
+  // ── History Modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  historyModal: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  historyModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  historyModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.text,
   },
 });

@@ -65,7 +65,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_SEARCH_HISTORY':
       return { ...state, searchHistory: action.payload };
     case 'ADD_SEARCH_HISTORY':
-      const newHistory = [action.payload, ...state.searchHistory].slice(0, 20);
+      const newHistory = [action.payload, ...state.searchHistory].slice(0, 10);
       return { ...state, searchHistory: newHistory };
     case 'CLEAR_SEARCH_HISTORY':
       return { ...state, searchHistory: [] };
@@ -93,6 +93,7 @@ interface AppContextType extends AppState {
   requestSAFSetup: () => Promise<boolean>;
   loadSearchHistory: () => Promise<void>;
   saveSearchHistory: (query: string, category: string) => Promise<void>;
+  clearSearchHistory: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -167,18 +168,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   async function saveSearchHistory(query: string, category: string): Promise<void> {
     try {
+      // Read current history from AsyncStorage to avoid race conditions
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
+      const currentHistory: SearchHistoryItem[] = stored ? JSON.parse(stored) : [];
+
+      // Remove duplicate if exists (same query + category, case-insensitive)
+      const filteredHistory = currentHistory.filter(
+        item => !(item.query.toLowerCase() === query.toLowerCase() && item.category === category)
+      );
+
       const newItem: SearchHistoryItem = {
         query,
         category,
         timestamp: Date.now(),
       };
-      
-      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: newItem });
-      
-      const updatedHistory = [newItem, ...state.searchHistory].slice(0, 20);
+
+      // Add new item at the beginning and limit to 10
+      const updatedHistory = [newItem, ...filteredHistory].slice(0, 10);
+
+      // Save to AsyncStorage first
       await AsyncStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(updatedHistory));
+
+      // Then update state
+      dispatch({ type: 'SET_SEARCH_HISTORY', payload: updatedHistory });
     } catch (error) {
       console.error('Failed to save search history:', error);
+    }
+  }
+
+  async function clearSearchHistory(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
+      dispatch({ type: 'CLEAR_SEARCH_HISTORY' });
+    } catch (error) {
+      console.error('Failed to clear search history:', error);
     }
   }
 
@@ -190,6 +213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     requestSAFSetup,
     loadSearchHistory,
     saveSearchHistory,
+    clearSearchHistory,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
