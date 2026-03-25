@@ -17,6 +17,7 @@ import { DownloadNotificationBar } from './src/components/DownloadNotificationBa
 import { CustomSplashScreen } from './src/components/CustomSplashScreen';
 import { downloadManager } from './src/services/DownloadManager';
 import { notificationService } from './src/services/NotificationService';
+import { updateService } from './src/services/UpdateService';
 
 // Prevent native splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -42,6 +43,8 @@ function AppNavigator() {
   useEffect(() => {
     if (!isLoading) {
       SplashScreen.hideAsync();
+      // Cleanup any leftover update APKs
+      updateService.cleanupDownloads();
     }
   }, [isLoading]);
 

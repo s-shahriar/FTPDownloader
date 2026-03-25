@@ -15,6 +15,7 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 import com.ftpdownloader.app.modules.SAFPermissionsPackage
 import com.ftpdownloader.app.modules.CustomNotificationPackage
+import com.ftpdownloader.app.modules.UpdatePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -27,6 +28,7 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           add(SAFPermissionsPackage())
           add(CustomNotificationPackage())
+          add(UpdatePackage())
         }
     )
   }

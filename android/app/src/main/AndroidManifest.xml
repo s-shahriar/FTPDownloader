@@ -37,12 +37,24 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <receiver android:name=".modules.CustomNotificationReceiver" android:exported="false">
       <intent-filter>
-        <action android:name="ACTION_PAUSE_DOWNLOAD"/>
-        <action android:name="ACTION_RESUME_DOWNLOAD"/>
-        <action android:name="ACTION_CANCEL_DOWNLOAD"/>
+        <action android:name="ACTION_PAUSE_DOWNLOAD" />
+        <action android:name="ACTION_RESUME_DOWNLOAD" />
+        <action android:name="ACTION_CANCEL_DOWNLOAD" />
       </intent-filter>
     </receiver>
+
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.provider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+            android:name="android.support.FILE_PROVIDER_PATHS"
+            android:resource="@xml/file_paths" />
+    </provider>
   </application>
 </manifest>

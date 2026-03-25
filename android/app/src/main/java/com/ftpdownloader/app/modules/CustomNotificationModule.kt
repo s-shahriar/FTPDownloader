@@ -115,6 +115,8 @@ class CustomNotificationModule(reactContext: ReactApplicationContext) : ReactCon
             .setCustomBigContentView(remoteViews)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setGroup("com.ftpdownloader.DOWNLOADS")
+            .setGroupSummary(false)
 
         val numericId = id.hashCode()
         notificationManager.notify(numericId, builder.build())

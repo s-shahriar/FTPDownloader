@@ -117,16 +117,23 @@ export class DownloadManager {
    * Then processQueue fires to start up to MAX_CONCURRENT.
    */
   private restoreQueue(): void {
-    // Items that were mid-download → reset to queued
+    // Items that were mid-download → reset to queued or paused
     for (const [id, item] of this.downloads) {
       if (item.status === DOWNLOAD_STATUS.DOWNLOADING || item.status === DOWNLOAD_STATUS.PENDING) {
-        item.status = DOWNLOAD_STATUS.QUEUED;
-        item.speed = 0;
-        item.timeRemaining = 0;
-        this.downloads.set(id, item);
-        // Add to front of queue if not already there
-        if (!this.queue.includes(id)) {
-          this.queue.unshift(id);
+        if (item.resumeData && item.localPath) {
+          item.status = DOWNLOAD_STATUS.PAUSED;
+          item.speed = 0;
+          item.timeRemaining = 0;
+          this.downloads.set(id, item);
+        } else {
+          item.status = DOWNLOAD_STATUS.QUEUED;
+          item.speed = 0;
+          item.timeRemaining = 0;
+          this.downloads.set(id, item);
+          // Add to front of queue if not already there
+          if (!this.queue.includes(id)) {
+            this.queue.unshift(id);
+          }
         }
       }
     }
@@ -225,48 +232,8 @@ export class DownloadManager {
       const result = await downloadResumable.downloadAsync();
 
       if (result && result.uri) {
-        // Step 2: Save to permanent storage (SAF or MediaLibrary)
-        let publicUri: string;
-
-        // Try SAF first (if configured)
-        const safUri = safPermissionService.getSAFDirectoryUri();
-        console.log(`🔍 [STORAGE] SAF URI configured: ${safUri ? 'YES' : 'NO'}`);
-
-        if (safUri) {
-          console.log('📁 [STORAGE] Attempting SAF write...');
-          console.log(`   Downloaded file URI: ${result.uri}`);
-          console.log(`   Target filename: ${item.name}`);
-
-          try {
-            const safResult = await safPermissionService.writeFileToSAF(
-              result.uri,
-              item.name
-            );
-
-            console.log(`🔍 [STORAGE] SAF write result:`, safResult);
-
-            if (safResult.success && safResult.uri) {
-              publicUri = safResult.uri;
-              console.log('✓ [STORAGE] File saved via SAF:', publicUri);
-              console.log('✓ [STORAGE] NOT using MediaLibrary fallback');
-            } else {
-              console.warn('⚠️ [STORAGE] SAF write failed, falling back to MediaLibrary');
-              console.warn('   Error:', safResult.error);
-              publicUri = await this.moveToPublicStorage(result.uri, item.name);
-              console.log('✓ [STORAGE] MediaLibrary fallback completed:', publicUri);
-            }
-          } catch (error: any) {
-            console.error('❌ [STORAGE] SAF write exception, falling back to MediaLibrary');
-            console.error('   Exception:', error.message);
-            publicUri = await this.moveToPublicStorage(result.uri, item.name);
-            console.log('✓ [STORAGE] MediaLibrary fallback completed:', publicUri);
-          }
-        } else {
-          // SAF not configured, use MediaLibrary
-          console.log('📸 [STORAGE] SAF not configured, using MediaLibrary');
-          publicUri = await this.moveToPublicStorage(result.uri, item.name);
-          console.log('✓ [STORAGE] MediaLibrary save completed:', publicUri);
-        }
+        // Step 2: Save to permanent storage (MediaLibrary or SAF)
+        let publicUri = await this.saveToStorage(result.uri, item);
 
         item.status = DOWNLOAD_STATUS.COMPLETED;
         item.progress = 100;
@@ -373,6 +340,38 @@ export class DownloadManager {
     }
   }
 
+  private async saveToStorage(cacheUri: string, item: DownloadItem): Promise<string> {
+    let publicUri: string;
+    const safUri = safPermissionService.getSAFDirectoryUri();
+    console.log(`🔍 [STORAGE] SAF URI configured: ${safUri ? 'YES' : 'NO'}`);
+
+    if (safUri) {
+      console.log('📁 [STORAGE] Attempting SAF write...');
+      console.log(`   Downloaded file URI: ${cacheUri}`);
+      console.log(`   Target filename: ${item.name}`);
+
+      try {
+        const safResult = await safPermissionService.writeFileToSAF(cacheUri, item.name);
+        console.log(`🔍 [STORAGE] SAF write result:`, safResult);
+
+        if (safResult.success && safResult.uri) {
+          publicUri = safResult.uri;
+          console.log('✓ [STORAGE] File saved via SAF:', publicUri);
+          return publicUri;
+        } else {
+          console.warn('⚠️ [STORAGE] SAF write failed, falling back to MediaLibrary', safResult.error);
+        }
+      } catch (error: any) {
+        console.error('❌ [STORAGE] SAF write exception, falling back to MediaLibrary', error.message);
+      }
+    } else {
+      console.log('📸 [STORAGE] SAF not configured, using MediaLibrary');
+    }
+
+    publicUri = await this.moveToPublicStorage(cacheUri, item.name);
+    console.log('✓ [STORAGE] MediaLibrary save completed:', publicUri);
+    return publicUri;
+  }
 
   /**
    * Web download — opens file URL directly in the browser via anchor click.
@@ -472,6 +471,21 @@ export class DownloadManager {
     const lastTime = this.lastNotificationTime.get(id) || 0;
     if (now - lastTime > 2000 && percentage > 0 && percentage < 100) {
       this.lastNotificationTime.set(id, now);
+      
+      // Keep resume data updated in memory
+      const task = this.downloadTasks.get(id);
+      if (task && typeof task.savable === 'function') {
+        try {
+          const savable = task.savable();
+          if (savable && savable.resumeData) {
+            item.resumeData = savable.resumeData;
+            // Best effort implicit save
+            this.downloads.set(id, item);
+            this.saveDownloads();
+          }
+        } catch (e) {}
+      }
+
       notificationService.onDownloadProgress({
         id,
         filename: item.name,
@@ -549,8 +563,11 @@ export class DownloadManager {
     const task = this.downloadTasks.get(id);
     if (task) {
       try {
-        await task.pauseAsync();
+        const pauseState = await task.pauseAsync();
         item.status = DOWNLOAD_STATUS.PAUSED;
+        if (pauseState && pauseState.resumeData) {
+          item.resumeData = pauseState.resumeData;
+        }
         item.speed = 0;
         item.timeRemaining = 0;
         this.downloads.set(id, item);
@@ -600,12 +617,13 @@ export class DownloadManager {
 
           task.resumeAsync().then(async result => {
             if (result && result.uri) {
+              const publicUri = await this.saveToStorage(result.uri, item);
               item.status = DOWNLOAD_STATUS.COMPLETED;
               item.progress = 100;
               item.endTime = Date.now();
               item.speed = 0;
               item.timeRemaining = 0;
-              item.localPath = result.uri;
+              item.localPath = publicUri;
               this.downloads.set(id, item);
               this.speedTrackers.delete(id);
               this.downloadTasks.delete(id);
@@ -633,6 +651,73 @@ export class DownloadManager {
           });
         } catch (error) {
           console.error('Failed to resume download:', error);
+        }
+      } else if (item.resumeData && item.localPath) {
+        // Task was lost but we have resume data!
+        console.log(`🔄 [DOWNLOAD] Resuming lost task from resumeData... ID: ${id}`);
+        try {
+          const restoredTask = FileSystem.createDownloadResumable(
+            item.url,
+            item.localPath,
+            {},
+            (progress) => { this.handleProgress(id, progress); },
+            item.resumeData
+          );
+
+          console.log(`✓ [DOWNLOAD] Restored task created for: ${item.name}`);
+          this.downloadTasks.set(id, restoredTask);
+          const tracker = new SpeedTracker();
+          this.speedTrackers.set(id, tracker);
+
+          item.status = DOWNLOAD_STATUS.DOWNLOADING;
+          item.error = undefined;
+          this.downloads.set(id, item);
+          await this.saveDownloads();
+          await notificationService.onDownloadResumed(id, item.name);
+
+          restoredTask.resumeAsync().then(async result => {
+            if (result && result.uri) {
+              const publicUri = await this.saveToStorage(result.uri, item);
+              item.status = DOWNLOAD_STATUS.COMPLETED;
+              item.progress = 100;
+              item.endTime = Date.now();
+              item.speed = 0;
+              item.timeRemaining = 0;
+              item.localPath = publicUri;
+              this.downloads.set(id, item);
+              this.speedTrackers.delete(id);
+              this.downloadTasks.delete(id);
+              this.lastNotificationTime.delete(id);
+              this.saveDownloads();
+              this.processQueue();
+              await notificationService.onDownloadComplete(id, item.name);
+            }
+          }).catch(async (error: any) => {
+            if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
+              item.status = DOWNLOAD_STATUS.FAILED;
+              item.error = error.message || 'Unknown error';
+              item.speed = 0;
+              item.timeRemaining = 0;
+              this.downloads.set(id, item);
+              this.speedTrackers.delete(id);
+              this.downloadTasks.delete(id);
+              this.lastNotificationTime.delete(id);
+              this.saveDownloads();
+              this.processQueue();
+              await notificationService.onDownloadFailed(id, item.name, error.message || 'Unknown error');
+            }
+          });
+        } catch (error) {
+           console.error('Failed to resume with saved data:', error);
+           // Fallback to queued from scratch
+           item.progress = 0;
+           item.downloadedBytes = 0;
+           item.speed = 0;
+           item.timeRemaining = 0;
+           item.error = undefined;
+           item.status = DOWNLOAD_STATUS.QUEUED;
+           this.downloads.set(id, item);
+           this.executeDownload(id);
         }
       } else {
         // Slot available but task was lost (e.g. connection abort cleaned it up)

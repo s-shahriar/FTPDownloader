@@ -17,6 +17,8 @@ import { useApp } from '../contexts/AppContext';
 import { showAlert } from './AlertModal';
 import { showToast } from './Toast';
 import { getGeminiApiKey, setGeminiApiKey } from '../services/GeminiService';
+import { updateService } from '../services/UpdateService';
+import Constants from 'expo-constants';
 import { COLORS } from '../constants';
 
 interface SettingsModalProps {
@@ -30,6 +32,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [safFolderName, setSAFFolderName] = useState('');
   const [isSAFConfigured, setIsSAFConfigured] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const { dispatch } = useApp();
 
   const slideAnim = useRef(new Animated.Value(300)).current;
@@ -160,6 +163,40 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
       }
     } catch (error: any) {
       showAlert('Test Failed', error.message || 'Failed to test folder access');
+    }
+  };
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const update = await updateService.checkForUpdate();
+      if (update.available) {
+        showAlert(
+          'Update Available',
+          `New version ${update.version} is available. Do you want to download and install it?`,
+          [
+            { text: 'Later', style: 'cancel' },
+            { 
+              text: 'Install Now', 
+              onPress: () => handleInstallUpdate(update) 
+            }
+          ]
+        );
+      } else {
+        showToast('App is up to date');
+      }
+    } catch (e: any) {
+      showAlert('Update Error', e.message || 'Failed to check for updates');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleInstallUpdate = async (update: any) => {
+    try {
+      await updateService.downloadAndInstall(update);
+    } catch (e: any) {
+      showAlert('Installation Failed', e.message || 'Failed to download or install update');
     }
   };
 
@@ -316,6 +353,31 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                   autoCorrect={false}
                 />
               </View>
+            </View>
+
+            {/* Updates Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialIcons name="system-update" size={16} color={COLORS.primary} />
+                <Text style={styles.sectionTitle}>APP UPDATES</Text>
+              </View>
+
+              <Text style={styles.hint}>
+                Check for latest version from GitHub releases.
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.updateBtn} 
+                onPress={handleCheckUpdate}
+                disabled={isCheckingUpdate}
+              >
+                <MaterialIcons name="cloud-download" size={16} color={COLORS.primary} />
+                <Text style={styles.updateBtnText}>
+                  {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+                </Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.versionText}>Current Version: {Constants.expoConfig?.version || '1.0.0'}</Text>
             </View>
 
           {/* Save button */}
@@ -544,5 +606,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.3,
+  },
+  updateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(61,127,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(61,127,255,0.2)',
+    marginBottom: 8,
+  },
+  updateBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  versionText: {
+    fontSize: 10,
+    color: COLORS.textDim,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });

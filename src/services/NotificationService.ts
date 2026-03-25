@@ -94,7 +94,7 @@ class NotificationService {
     await notifee.createChannel({
       id: 'download_service',
       name: 'Download Service',
-      importance: AndroidImportance.LOW,
+      importance: AndroidImportance.MIN,
       sound: undefined,
       vibration: false,
       lights: false,
@@ -114,6 +114,10 @@ class NotificationService {
 
   async onDownloadStart(id: string, filename: string, category?: string) {
     if (!this.permissionGranted) return;
+
+    if (!this.foregroundServiceId) {
+      await this.startForegroundService();
+    }
 
     // Add to active downloads
     this.activeDownloads.set(id, {
@@ -183,17 +187,11 @@ class NotificationService {
     // Dismiss download notification immediately (completion notification replaces it)
     await this.dismissDownloadNotification(id);
 
-    // If this was the foreground service, reassign to next download
-    if (this.foregroundServiceId === `download_${id}`) {
+    // If no more active downloads, stop the foreground service
+    if (this.activeDownloads.size === 0) {
       this.foregroundServiceId = null;
-
-      // Make next download the foreground service
-      const nextDownload = Array.from(this.activeDownloads.values())[0];
-      if (nextDownload) {
-        await this.showDownloadNotification(nextDownload);
-      } else {
-        await notifee.stopForegroundService();
-      }
+      await notifee.stopForegroundService();
+      await this.dismissDownloadNotification('download_foreground_service');
     }
   }
 
@@ -232,17 +230,11 @@ class NotificationService {
     // Dismiss download notification
     await this.dismissDownloadNotification(id);
 
-    // If this was the foreground service, reassign to next download
-    if (this.foregroundServiceId === `download_${id}`) {
+    // If no more active downloads, stop the foreground service
+    if (this.activeDownloads.size === 0) {
       this.foregroundServiceId = null;
-
-      // Make next download the foreground service
-      const nextDownload = Array.from(this.activeDownloads.values())[0];
-      if (nextDownload) {
-        await this.showDownloadNotification(nextDownload);
-      } else {
-        await notifee.stopForegroundService();
-      }
+      await notifee.stopForegroundService();
+      await this.dismissDownloadNotification('download_foreground_service');
     }
   }
 
@@ -273,19 +265,16 @@ class NotificationService {
 
     await notifee.displayNotification({
       id: notificationId,
-      title: 'Download Manager Active',
-      body: 'Preparing downloads...',
+      title: 'FTPDownloader',
+      body: 'Service is active',
       android: {
         channelId: 'download_service',
         asForegroundService: true,
+        groupId: 'com.ftpdownloader.DOWNLOADS',
+        groupSummary: true,
         ongoing: true,
         autoCancel: false,
-        color: '#3d7fff',
-        colorized: true,
         smallIcon: 'ic_download',
-        progress: {
-          indeterminate: true,
-        },
         pressAction: {
           id: 'open_downloads',
         },
@@ -296,107 +285,8 @@ class NotificationService {
   }
 
   private async updateSummaryNotification() {
-    if (!this.foregroundServiceId || this.activeDownloads.size === 0) {
-      return;
-    }
-
-    const downloads = Array.from(this.activeDownloads.values());
-
-    // Calculate aggregate statistics
-    const totalProgress = downloads.reduce((sum, d) => sum + d.progress, 0);
-    const avgProgress = Math.round(totalProgress / downloads.length);
-    const totalSpeed = downloads
-      .filter((d) => d.status === 'downloading')
-      .reduce((sum, d) => sum + d.speed, 0);
-
-    // Count by status
-    const downloadingCount = downloads.filter((d) => d.status === 'downloading').length;
-    const queuedCount = downloads.filter((d) => d.status === 'queued').length;
-    const pausedCount = downloads.filter((d) => d.status === 'paused').length;
-
-    // Create title - show count if multiple downloads
-    const title = downloads.length === 1
-      ? 'Downloading file'
-      : `Downloading ${downloads.length} files`;
-
-    // Create body - compact summary
-    const bodyParts = [];
-    if (downloadingCount > 0) bodyParts.push(`${downloadingCount} active`);
-    if (pausedCount > 0) bodyParts.push(`${pausedCount} paused`);
-    if (queuedCount > 0) bodyParts.push(`${queuedCount} queued`);
-    if (totalSpeed > 0) bodyParts.push(this.formatSpeed(totalSpeed));
-
-    const body = bodyParts.length > 0 ? bodyParts.join(' • ') : 'Processing...';
-
-    // Create expanded text with better formatting
-    const expandedLines = downloads
-      .map((d, index) => {
-        // Status indicator
-        const statusEmoji = d.status === 'downloading' ? '⬇' : d.status === 'paused' ? '⏸' : '⏳';
-
-        // Progress and speed info
-        const progressInfo = d.status === 'downloading'
-          ? `${d.progress}% • ${this.formatSpeed(d.speed)}${d.eta > 0 ? ' • ' + this.formatTime(d.eta) : ''}`
-          : `${d.progress}% • ${this.formatBytes(d.downloadedBytes)} / ${this.formatBytes(d.totalBytes)}`;
-
-        // Filename (truncate if too long)
-        const filename = d.filename.length > 50 ? d.filename.substring(0, 47) + '...' : d.filename;
-
-        // Format: [Emoji] Filename
-        //         Progress info
-        return `${statusEmoji} ${filename}\n   ${progressInfo}${index < downloads.length - 1 ? '\n' : ''}`;
-      })
-      .join('\n');
-
-    await notifee.displayNotification({
-      id: this.foregroundServiceId,
-      title,
-      body,
-      android: {
-        channelId: 'download_service',
-        asForegroundService: true,
-        ongoing: true,
-        autoCancel: false,
-        onlyAlertOnce: true,
-        // Use default color for dark/light mode compatibility (no hardcoded colors)
-        smallIcon: 'ic_download',
-        progress: {
-          max: 100,
-          current: avgProgress,
-          indeterminate: false,
-        },
-        style: {
-          type: AndroidStyle.BIGTEXT,
-          text: expandedLines,
-        },
-        actions: downloadingCount > 0 ? [
-          {
-            title: 'Pause All',
-            icon: 'ic_pause',
-            pressAction: { id: 'pause_all' },
-          },
-          {
-            title: 'Open',
-            icon: 'ic_open',
-            pressAction: { id: 'open_downloads' },
-          },
-        ] : [
-          {
-            title: 'Resume All',
-            icon: 'ic_play',
-            pressAction: { id: 'resume_all' },
-          },
-          {
-            title: 'Open',
-            icon: 'ic_open',
-            pressAction: { id: 'open_downloads' },
-          },
-        ],
-        pressAction: {
-          id: 'open_downloads',
-        },
-      },
-    });
+    // Disabled to remove duplicate notification card
+    return;
   }
 
   private async showDownloadNotification(data: DownloadNotificationData) {
