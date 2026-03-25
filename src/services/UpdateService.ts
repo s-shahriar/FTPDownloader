@@ -3,6 +3,7 @@ import { Platform, NativeModules } from 'react-native';
 import Constants from 'expo-constants';
 import * as Sharing from 'expo-sharing';
 import { showToast } from '../components/Toast';
+import { notificationService } from './NotificationService';
 
 const GITHUB_API = 'https://api.github.com/repos/s-shahriar/FTPDownloader/releases/latest';
 
@@ -64,26 +65,54 @@ export const updateService = {
   async downloadAndInstall(update: UpdateInfo) {
     if (!update.url) throw new Error('Update URL not found');
 
+    const updateId = 'app_update';
     const filename = update.name || `FTPDownloader-v${update.version}.apk`;
     const downloadUri = FileSystem.cacheDirectory + filename;
 
     try {
-      showToast('Downloading update...');
+      // First clean up any old update files
+      await this.cleanupDownloads();
+      
+      showToast('Downloading update artifact...');
+      
+      // Initialize the notification for update progress
+      await notificationService.onDownloadStart(updateId, filename, 'Updates');
+
       const downloadResumable = FileSystem.createDownloadResumable(
         update.url,
-        downloadUri
+        downloadUri,
+        {},
+        (progress) => {
+          const totalBytes = progress.totalBytesExpectedToWrite;
+          const downloadedBytes = progress.totalBytesWritten;
+          const percentage = Math.round((downloadedBytes / totalBytes) * 100);
+          
+          notificationService.onDownloadProgress({
+            id: updateId,
+            filename,
+            progress: percentage,
+            downloadedBytes,
+            totalBytes,
+            speed: 0, // Not needed for simple update notification
+            eta: 0,
+            status: 'downloading'
+          });
+        }
       );
 
       const result = await downloadResumable.downloadAsync();
-      if (!result) return;
+      if (!result) {
+        await notificationService.onDownloadFailed(updateId, filename, 'Download interrupted');
+        return;
+      }
 
+      await notificationService.onDownloadComplete(updateId, filename);
       showToast('Installation starting...');
 
       if (Platform.OS === 'android') {
         if (NativeModules.UpdateModule) {
            await NativeModules.UpdateModule.installApk(result.uri);
         } else {
-           // Fallback to sharing if native module not ready
            if (await Sharing.isAvailableAsync()) {
              await Sharing.shareAsync(result.uri, {
                 mimeType: 'application/vnd.android.package-archive',
@@ -91,22 +120,20 @@ export const updateService = {
            }
         }
       }
-
-      // Deletion strategy: Since the app restarts after update, 
-      // it's best to trigger cleanup on next app start or after installation starts.
-      // But we can try to schedule deletion if the installer allows.
-    } catch (e) {
+    } catch (e: any) {
       console.error('Download update error:', e);
+      await notificationService.onDownloadFailed(updateId, filename, e.message || 'Download failed');
       throw e;
     }
   },
 
   async cleanupDownloads() {
     try {
-      const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory!);
+      const dir = FileSystem.cacheDirectory!;
+      const files = await FileSystem.readDirectoryAsync(dir);
       for (const file of files) {
         if (file.endsWith('.apk')) {
-          await FileSystem.deleteAsync(FileSystem.cacheDirectory + file, { idempotent: true });
+          await FileSystem.deleteAsync(dir + file, { idempotent: true });
         }
       }
     } catch (e) {
