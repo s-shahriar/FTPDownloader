@@ -17,6 +17,7 @@ interface DownloadItemCardProps {
   onCancel: (id: string) => void;
   onRetry: (id: string) => void;
   onDelete: (id: string) => void;
+  onOpen: (id: string) => void;
 }
 
 function formatSpeed(bytesPerSec: number): string {
@@ -55,6 +56,7 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
   onCancel,
   onRetry,
   onDelete,
+  onOpen,
 }: DownloadItemCardProps) {
   const progressPercent = download.progress || 0;
 
@@ -172,12 +174,20 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
         );
       case DOWNLOAD_STATUS.COMPLETED:
         return (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onDelete(download.id)}
-          >
-            <MaterialIcons name="delete" size={20} color={COLORS.error} />
-          </TouchableOpacity>
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => onOpen(download.id)}
+            >
+              <MaterialIcons name="play-circle-outline" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => onDelete(download.id)}
+            >
+              <MaterialIcons name="delete" size={20} color={COLORS.error} />
+            </TouchableOpacity>
+          </View>
         );
       case DOWNLOAD_STATUS.FAILED:
       case DOWNLOAD_STATUS.CANCELLED:

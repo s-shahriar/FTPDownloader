@@ -182,6 +182,44 @@ export function DownloadsScreen({ navigation }: any) {
     );
   };
 
+  const handleOpen = async (id: string) => {
+    const download = downloadManager.getDownload(id);
+    if (!download || !download.localPath) {
+      showAlert('Error', 'File not found');
+      return;
+    }
+
+    try {
+      const { Linking } = await import('react-native');
+
+      // For Android content:// URIs (SAF), use Linking.openURL
+      // This will show "Open with" options for the file
+      if (download.localPath.startsWith('content://')) {
+        const canOpen = await Linking.canOpenURL(download.localPath);
+        if (!canOpen) {
+          showAlert('Cannot Open', 'No app available to open this file type');
+          return;
+        }
+        await Linking.openURL(download.localPath);
+      } else {
+        // For regular file:// paths, try Linking as well
+        const fileUri = download.localPath.startsWith('file://')
+          ? download.localPath
+          : `file://${download.localPath}`;
+
+        const canOpen = await Linking.canOpenURL(fileUri);
+        if (!canOpen) {
+          showAlert('Cannot Open', 'No app available to open this file type');
+          return;
+        }
+        await Linking.openURL(fileUri);
+      }
+    } catch (error: any) {
+      console.error('Error opening file:', error);
+      showAlert('Error', 'Failed to open file. Make sure you have a video player app installed.');
+    }
+  };
+
   const renderItem = ({ item }: { item: DownloadItem }) => (
     <DownloadItemCard
       download={item}
@@ -190,6 +228,7 @@ export function DownloadsScreen({ navigation }: any) {
       onCancel={handleCancel}
       onRetry={handleRetry}
       onDelete={handleDelete}
+      onOpen={handleOpen}
     />
   );
 

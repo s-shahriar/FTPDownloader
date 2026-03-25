@@ -96,7 +96,8 @@
         }
       ],
       "expo-font",
-      "./android-network-security-config.js"
+      "./android-network-security-config.js",
+      "expo-sharing"
     ]
   }
 }
