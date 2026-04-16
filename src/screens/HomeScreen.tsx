@@ -394,7 +394,7 @@ export function HomeScreen({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Bottom bar — Downloads CTA */}
+      {/* Bottom bar */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.downloadsCta}
@@ -402,6 +402,13 @@ export function HomeScreen({ navigation }: any) {
         >
           <MaterialIcons name="download" size={20} color="#1a0e00" />
           <Text style={styles.downloadsCtaText}>My Downloads</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.srtCta}
+          onPress={() => navigation.navigate('SRTConverter')}
+        >
+          <MaterialIcons name="translate" size={20} color="#fff" />
+          <Text style={styles.srtCtaText}>SRT Converter</Text>
         </TouchableOpacity>
       </View>
 
@@ -704,6 +711,8 @@ const styles = StyleSheet.create({
 
   // ── Bottom bar ──
   bottomBar: {
+    flexDirection: 'row',
+    gap: 10,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
@@ -712,6 +721,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   downloadsCta: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -730,6 +740,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#1a0e00',
+    letterSpacing: 0.3,
+  },
+  srtCta: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    paddingVertical: 15,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 24px rgba(108,92,231,0.35)' as any,
+      },
+      android: { elevation: 6 },
+    }),
+  },
+  srtCtaText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
     letterSpacing: 0.3,
   },
 

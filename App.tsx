@@ -9,6 +9,7 @@ import { AppProvider, useApp } from './src/contexts/AppContext';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SearchResultsScreen } from './src/screens/SearchResultsScreen';
 import { DownloadsScreen } from './src/screens/DownloadsScreen';
+import { SRTConverterScreen } from './src/screens/SRTConverterScreen';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from './src/constants';
 import { ToastHost } from './src/components/Toast';
@@ -136,6 +137,7 @@ function AppNavigator() {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
           <Stack.Screen name="Downloads" component={DownloadsScreen} />
+          <Stack.Screen name="SRTConverter" component={SRTConverterScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <DownloadNotificationBar navigationRef={navigationRef} />
