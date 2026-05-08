@@ -2,17 +2,17 @@
   "expo": {
     "name": "FTPDownloader",
     "slug": "FTPDownloader",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/transparent-splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f2f4f8"
+      "backgroundColor": "#04061a"
     },
-    "backgroundColor": "#f2f4f8",
-    "primaryColor": "#3d7fff",
+    "backgroundColor": "#04061a",
+    "primaryColor": "#818cf8",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.ftpdownloader.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "usesCleartextTraffic": true,
       "splash": {
         "image": "./assets/transparent-splash.png",
