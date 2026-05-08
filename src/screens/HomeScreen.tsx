@@ -472,19 +472,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     ...Platform.select({
-      web: {
-        height: '100vh' as any,
-        maxHeight: '100vh' as any,
-      },
+      web: { height: '100vh' as any, maxHeight: '100vh' as any },
     }),
   },
   scrollView: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        overflowY: 'auto' as any,
-      },
-    }),
+    ...Platform.select({ web: { overflowY: 'auto' as any } }),
   },
 
   // ── App bar ──
@@ -496,13 +489,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 30px rgba(99,102,241,0.14)' as any },
+      android: { elevation: 4 },
+    }),
   },
   appbarSubtitle: {
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
-    color: COLORS.accent,
+    color: '#22d3ee',
     marginBottom: 4,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -518,9 +515,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
-    backgroundColor: 'rgba(0,200,160,0.08)',
+    backgroundColor: 'rgba(129,140,248,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(0,200,160,0.2)',
+    borderColor: 'rgba(129,140,248,0.26)',
     borderRadius: 40,
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -534,16 +531,14 @@ const styles = StyleSheet.create({
   },
   connText: {
     fontSize: 10,
-    color: '#00a080',
+    color: '#22d3ee',
     fontWeight: '500',
     letterSpacing: 0.5,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 
   // ── Body ──
-  body: {
-    paddingVertical: 16,
-  },
+  body: { paddingVertical: 16 },
   sectionLabel: {
     fontSize: 9,
     fontWeight: '700',
@@ -565,34 +560,26 @@ const styles = StyleSheet.create({
   },
   categoryHintText: {
     fontSize: 11,
-    color: COLORS.textDim,
+    color: COLORS.textSecondary,
     fontStyle: 'italic',
   },
 
   // ── Search ──
-  searchGroup: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    gap: 10,
-  },
-  searchInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  inputWrapFlex: {
-    flex: 1,
-  },
+  searchGroup: { marginHorizontal: 16, marginBottom: 12, gap: 10 },
+  searchInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  inputWrapFlex: { flex: 1 },
   historyBtnInline: {
     width: 52,
     height: 52,
     borderRadius: 12,
-    backgroundColor: COLORS.textSecondary,
+    backgroundColor: COLORS.card2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(107,115,148,0.3)' as any },
+      web: { boxShadow: '0 4px 20px rgba(99,102,241,0.22)' as any },
       android: { elevation: 3 },
     }),
   },
@@ -605,7 +592,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(108,92,231,0.4)' as any },
+      web: { boxShadow: '0 4px 22px rgba(167,139,250,0.42)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -621,28 +608,18 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: COLORS.primary,
     ...Platform.select({
-      web: {
-        boxShadow: '0 0 0 3px rgba(61,127,255,0.15)' as any,
-      },
+      web: { boxShadow: '0 0 0 3px rgba(129,140,248,0.18)' as any },
     }),
   },
-  inputIcon: {
-    marginRight: 10,
-  },
+  inputIcon: { marginRight: 10 },
   fieldInput: {
     flex: 1,
     paddingVertical: 14,
     fontSize: 14,
     color: COLORS.text,
-    ...Platform.select({
-      web: { outlineStyle: 'none' } as any,
-    }),
+    ...Platform.select({ web: { outlineStyle: 'none' } as any }),
   },
-  yearRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  yearRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   yearInputWrap: {
     flex: 1,
     flexDirection: 'row',
@@ -662,9 +639,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: {
-        boxShadow: '0 4px 20px rgba(61,127,255,0.35)' as any,
-      },
+      web: { boxShadow: '0 4px 22px rgba(129,140,248,0.45)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -677,9 +652,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 8,
     ...Platform.select({
-      web: {
-        boxShadow: '0 4px 20px rgba(61,127,255,0.35)' as any,
-      },
+      web: { boxShadow: '0 4px 22px rgba(129,140,248,0.45)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -691,15 +664,10 @@ const styles = StyleSheet.create({
   },
 
   // ── History ──
-  historySection: {
-    marginHorizontal: 16,
-    marginTop: 4,
-  },
+  historySection: { marginHorizontal: 16, marginTop: 4 },
 
   // ── Results ──
-  resultsContainer: {
-    marginVertical: 8,
-  },
+  resultsContainer: { marginVertical: 8 },
   resultsTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -719,6 +687,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
+    ...Platform.select({
+      web: { boxShadow: '0 -4px 24px rgba(99,102,241,0.12)' as any },
+    }),
   },
   downloadsCta: {
     flex: 1,
@@ -730,18 +701,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: {
-        boxShadow: '0 4px 24px rgba(232,160,32,0.35)' as any,
-      },
+      web: { boxShadow: '0 4px 26px rgba(232,160,32,0.46)' as any },
       android: { elevation: 6 },
     }),
   },
-  downloadsCtaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a0e00',
-    letterSpacing: 0.3,
-  },
+  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: '#1a0e00', letterSpacing: 0.3 },
   srtCta: {
     flex: 1,
     flexDirection: 'row',
@@ -752,23 +716,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: {
-        boxShadow: '0 4px 24px rgba(108,92,231,0.35)' as any,
-      },
+      web: { boxShadow: '0 4px 26px rgba(167,139,250,0.42)' as any },
       android: { elevation: 6 },
     }),
   },
-  srtCtaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.3,
-  },
+  srtCtaText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
 
   // ── History Modal ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   historyModal: {
@@ -779,6 +736,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    ...Platform.select({
+      web: { boxShadow: '0 -12px 50px rgba(99,102,241,0.18)' as any },
+    }),
   },
   historyModalHeader: {
     flexDirection: 'row',
@@ -786,9 +748,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  historyModalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
+  historyModalTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text },
 });

@@ -199,33 +199,35 @@ export const DOWNLOAD_CONFIG = {
 
 export const COLORS = {
   // Brand
-  primary: '#3d7fff',       // blue
-  secondary: '#6c5ce7',     // indigo
-  accent: '#e8a020',        // amber/gold
-  accentDark: '#d4881a',    // amber darker
+  primary: '#818cf8',        // indigo-400 (bright for dark bg)
+  secondary: '#a78bfa',      // violet-400
+  accent: '#e8a020',         // amber/gold (kept for Downloads CTA)
+  accentAlt: '#22d3ee',      // cyan (secondary accent)
+  accentDark: '#d4881a',     // amber darker
 
   // Backgrounds
-  background: '#f2f4f8',    // soft blue-gray
-  surface: '#ffffff',       // white cards
-  card: '#f0f2f8',          // very light blue-gray
-  card2: '#e8ecf4',         // slightly deeper
-  inputBg: '#f0f2f8',       // input field background
-  border: 'rgba(0,0,0,0.07)',
+  background: '#04061a',     // very deep navy
+  surface: '#0a0e28',        // dark navy surface
+  card: '#0f1433',           // card bg
+  card2: '#141a3c',          // elevated/action bg
+  inputBg: '#0f1433',        // input field background
+  border: 'rgba(99,102,241,0.16)',
 
   // Text
-  text: '#1a1a2e',          // near black
-  textSecondary: '#6b7394', // muted blue-gray
-  textDim: '#a0a8c0',       // very muted
+  text: '#ecedf8',           // near white
+  textSecondary: '#7879c0',  // muted indigo
+  textDim: '#4a4e80',        // very muted
 
   // Status
-  error: '#ff4d6a',
-  success: '#00c8a0',       // teal
-  warning: '#e8a020',       // amber
-  info: '#3d7fff',          // blue
+  error: '#f43f5e',          // rose
+  success: '#22c55e',        // green
+  warning: '#f59e0b',        // amber
+  info: '#818cf8',           // indigo
 
   // Glow / shadow helpers
-  blueGlow: 'rgba(61,127,255,0.25)',
-  amberGlow: 'rgba(232,160,32,0.35)',
+  blueGlow: 'rgba(129,140,248,0.28)',
+  amberGlow: 'rgba(232,160,32,0.30)',
+  cyanGlow: 'rgba(34,211,238,0.22)',
 };
 
 export const STORAGE_KEYS = {

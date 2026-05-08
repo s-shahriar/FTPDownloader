@@ -229,10 +229,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     ...Platform.select({
-      web: {
-        height: '100vh' as any,
-        maxHeight: '100vh' as any,
-      },
+      web: { height: '100vh' as any, maxHeight: '100vh' as any },
     }),
   },
 
@@ -246,26 +243,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     gap: 14,
+    ...Platform.select({
+      web: { boxShadow: '0 2px 20px rgba(99,102,241,0.12)' as any },
+      android: { elevation: 3 },
+    }),
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.card2,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  appbarInfo: {
-    flex: 1,
-  },
-  appbarTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: 0.2,
-  },
+  appbarInfo: { flex: 1 },
+  appbarTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, letterSpacing: 0.2 },
   appbarSubtitle: {
     fontSize: 11,
     color: COLORS.textSecondary,
@@ -286,7 +280,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    color: COLORS.textDim,
+    color: '#22d3ee',
     marginBottom: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -300,25 +294,11 @@ const styles = StyleSheet.create({
   // ── List ──
   list: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        overflowY: 'auto' as any,
-      },
-    }),
+    ...Platform.select({ web: { overflowY: 'auto' as any } }),
   },
-  listContainer: {
-    paddingVertical: 10,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
+  listContainer: { paddingVertical: 10 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingText: { fontSize: 13, color: COLORS.textSecondary },
 
   // ── Bottom bar ──
   bottomBar: {
@@ -328,6 +308,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
+    ...Platform.select({
+      web: { boxShadow: '0 -4px 24px rgba(99,102,241,0.12)' as any },
+    }),
   },
   downloadsCta: {
     flexDirection: 'row',
@@ -338,16 +321,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 24px rgba(232,160,32,0.35)' as any },
+      web: { boxShadow: '0 4px 26px rgba(232,160,32,0.46)' as any },
       android: { elevation: 6 },
     }),
   },
-  downloadsCtaText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a0e00',
-    letterSpacing: 0.3,
-  },
+  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: '#1a0e00', letterSpacing: 0.3 },
 
   // ── Empty state ──
   emptyState: {
@@ -363,21 +341,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(129,140,248,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    ...Platform.select({
+      web: { boxShadow: '0 4px 20px rgba(129,140,248,0.14)' as any },
+    }),
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
 });
