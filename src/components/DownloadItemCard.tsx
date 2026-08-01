@@ -68,6 +68,8 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
         return COLORS.success;
       case DOWNLOAD_STATUS.PAUSED:
         return COLORS.warning;
+      case DOWNLOAD_STATUS.SAVING:
+        return COLORS.info;
       case DOWNLOAD_STATUS.FAILED:
         return COLORS.error;
       case DOWNLOAD_STATUS.QUEUED:
@@ -97,8 +99,13 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
       }
       case DOWNLOAD_STATUS.COMPLETED:
         return 'Completed';
+      case DOWNLOAD_STATUS.SAVING:
+        return 'Saving to storage…';
       case DOWNLOAD_STATUS.PAUSED:
-        return `Paused at ${progressPercent}%`;
+        // download.error is set when something stopped it rather than the user
+        return download.error
+          ? `Stopped at ${progressPercent}% — ${download.error}`
+          : `Paused at ${progressPercent}%`;
       case DOWNLOAD_STATUS.FAILED:
         return 'Failed';
       case DOWNLOAD_STATUS.CANCELLED:
@@ -114,6 +121,8 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
         return 'downloading';
       case DOWNLOAD_STATUS.COMPLETED:
         return 'check-circle';
+      case DOWNLOAD_STATUS.SAVING:
+        return 'save';
       case DOWNLOAD_STATUS.PAUSED:
         return 'pause-circle-filled';
       case DOWNLOAD_STATUS.FAILED:

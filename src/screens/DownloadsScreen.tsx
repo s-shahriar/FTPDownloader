@@ -43,7 +43,8 @@ export function DownloadsScreen({ navigation }: any) {
       return download.status === DOWNLOAD_STATUS.DOWNLOADING ||
              download.status === DOWNLOAD_STATUS.PENDING ||
              download.status === DOWNLOAD_STATUS.QUEUED ||
-             download.status === DOWNLOAD_STATUS.PAUSED;
+             download.status === DOWNLOAD_STATUS.PAUSED ||
+             download.status === DOWNLOAD_STATUS.SAVING;
     }
     if (filter === 'completed') {
       return download.status === DOWNLOAD_STATUS.COMPLETED ||
@@ -236,7 +237,8 @@ export function DownloadsScreen({ navigation }: any) {
     d.status === DOWNLOAD_STATUS.DOWNLOADING ||
     d.status === DOWNLOAD_STATUS.PENDING ||
     d.status === DOWNLOAD_STATUS.QUEUED ||
-    d.status === DOWNLOAD_STATUS.PAUSED
+    d.status === DOWNLOAD_STATUS.PAUSED ||
+    d.status === DOWNLOAD_STATUS.SAVING
   ).length;
 
   const downloadingCount = downloads.filter(d =>

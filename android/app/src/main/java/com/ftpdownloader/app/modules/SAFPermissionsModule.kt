@@ -13,6 +13,7 @@ import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.concurrent.Executors
 
 /**
  * Native module for managing SAF (Storage Access Framework) persistent URI permissions
@@ -20,6 +21,9 @@ import java.io.FileOutputStream
  */
 class SAFPermissionsModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
+
+    // Single worker so concurrent saves queue instead of thrashing the disk.
+    private val copyExecutor = Executors.newSingleThreadExecutor()
 
     override fun getName(): String {
         return "SAFPermissionsModule"
@@ -165,6 +169,21 @@ class SAFPermissionsModule(reactContext: ReactApplicationContext) :
      */
     @ReactMethod
     fun copyFileToSAF(
+        sourceUri: String,
+        targetDirectoryUri: String,
+        filename: String,
+        mimeType: String,
+        promise: Promise
+    ) {
+        // Copying a multi-GB movie takes minutes. Doing it on the calling
+        // (native modules) thread blocks every other native call for the whole
+        // duration, which makes the app look frozen while a download saves.
+        copyExecutor.execute {
+            copyFileToSAFBlocking(sourceUri, targetDirectoryUri, filename, mimeType, promise)
+        }
+    }
+
+    private fun copyFileToSAFBlocking(
         sourceUri: String,
         targetDirectoryUri: String,
         filename: String,

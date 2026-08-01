@@ -1,4 +1,4 @@
-export type DownloadStatus = 'pending' | 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';
+export type DownloadStatus = 'pending' | 'queued' | 'downloading' | 'paused' | 'saving' | 'completed' | 'failed' | 'cancelled';
 
 export type CategoryType = 'movie_with_year' | 'movie_flat' | 'tv_series' | 'korean_tv_series' | 'movie_merged' | 'movie_foreign' | 'anime_series';
 export type YearFormat = 'paren' | 'paren_1080p' | 'bare' | 'none';

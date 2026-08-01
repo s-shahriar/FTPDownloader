@@ -112,29 +112,21 @@ export class DownloadManager {
   }
 
   /**
-   * On app restart, any item that was DOWNLOADING when the app was killed
-   * gets reset to QUEUED and pushed to the front of the queue.
-   * Then processQueue fires to start up to MAX_CONCURRENT.
+   * On app restart, anything that was mid-flight is parked as PAUSED.
+   * The partial file is still in the cache directory, so resuming picks up
+   * from its current length — never from zero.
    */
   private restoreQueue(): void {
-    // Items that were mid-download → reset to queued or paused
     for (const [id, item] of this.downloads) {
-      if (item.status === DOWNLOAD_STATUS.DOWNLOADING || item.status === DOWNLOAD_STATUS.PENDING) {
-        if (item.resumeData && item.localPath) {
-          item.status = DOWNLOAD_STATUS.PAUSED;
-          item.speed = 0;
-          item.timeRemaining = 0;
-          this.downloads.set(id, item);
-        } else {
-          item.status = DOWNLOAD_STATUS.QUEUED;
-          item.speed = 0;
-          item.timeRemaining = 0;
-          this.downloads.set(id, item);
-          // Add to front of queue if not already there
-          if (!this.queue.includes(id)) {
-            this.queue.unshift(id);
-          }
-        }
+      if (
+        item.status === DOWNLOAD_STATUS.DOWNLOADING ||
+        item.status === DOWNLOAD_STATUS.PENDING ||
+        item.status === DOWNLOAD_STATUS.SAVING
+      ) {
+        item.status = DOWNLOAD_STATUS.PAUSED;
+        item.speed = 0;
+        item.timeRemaining = 0;
+        this.downloads.set(id, item);
       }
     }
 
@@ -195,16 +187,61 @@ export class DownloadManager {
     return this.executeDownloadNative(id);
   }
 
-  /** Native download via expo-file-system DownloadResumable */
+  /** Cache path a download streams into before it is saved to public storage. */
+  private getTempPath(item: DownloadItem): string {
+    return `${FileSystem.cacheDirectory}${item.name}`;
+  }
+
+  /**
+   * Byte length of a partial file, or 0 if there isn't one.
+   *
+   * On Android expo's `resumeData` is exactly this number as a string:
+   * FileSystemLegacyModule sends `Range: bytes=<n>-` and opens the file in
+   * append mode whenever resumeData is non-null, and truncates when it isn't.
+   */
+  private async getBytesOnDisk(fileUri: string): Promise<number> {
+    try {
+      const info = await FileSystem.getInfoAsync(fileUri);
+      return info.exists && !info.isDirectory ? info.size ?? 0 : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * The single entry point for both starting and resuming a native download.
+   *
+   * Expo only ever populates `resumeData` inside `pauseAsync()`, so after a
+   * dropped connection or a killed process it is undefined — and starting
+   * without it truncates the partial file and re-downloads from 0%. Deriving
+   * the offset from the file on disk is correct no matter how the last attempt
+   * ended, so every path through here resumes.
+   */
   private async executeDownloadNative(id: string): Promise<void> {
     const item = this.downloads.get(id);
     if (!item) return;
 
-    const tracker = new SpeedTracker();
-    this.speedTrackers.set(id, tracker);
+    // Claim the concurrency slot synchronously. processQueue's drain loop
+    // counts DOWNLOADING items and keeps looping until the cap is reached — if
+    // the first await here lands before the status is set, it starts the whole
+    // queue at once.
+    item.status = DOWNLOAD_STATUS.DOWNLOADING;
+    item.error = undefined;
+    this.downloads.set(id, item);
 
-    // Step 1: Download to cache directory (always writable)
-    const tempPath = `${FileSystem.cacheDirectory}${item.name}`;
+    const tempPath = this.getTempPath(item);
+    const offset = await this.getBytesOnDisk(tempPath);
+
+    // Already have every byte — asking for `bytes=<size>-` would earn a 416
+    // whose error body gets appended to the file. Go straight to saving.
+    if (offset > 0 && item.totalBytes > 0 && offset >= item.totalBytes) {
+      await this.completeDownload(id, tempPath);
+      await this.saveDownloads();
+      this.processQueue();
+      return;
+    }
+
+    const resumeData = offset > 0 ? String(offset) : undefined;
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.url,
@@ -212,76 +249,157 @@ export class DownloadManager {
       {},
       (progress) => {
         this.handleProgress(id, progress);
-      }
+      },
+      resumeData
     );
 
     this.downloadTasks.set(id, downloadResumable);
+    this.speedTrackers.set(id, new SpeedTracker());
 
-    // Mark as downloading
     item.status = DOWNLOAD_STATUS.DOWNLOADING;
     item.localPath = tempPath;
-    item.startTime = Date.now();
+    item.resumeData = resumeData;
     item.error = undefined;
+    if (offset > 0) {
+      item.downloadedBytes = offset;
+    } else {
+      item.downloadedBytes = 0;
+      item.progress = 0;
+      item.startTime = Date.now();
+    }
     this.downloads.set(id, item);
-    this.saveDownloads();
+    await this.saveDownloads();
 
-    // Show notification that download started
-    await notificationService.onDownloadStart(id, item.name, item.category);
+    if (offset > 0) {
+      console.log(`▶️ [DOWNLOAD] Resuming "${item.name}" from byte ${offset}`);
+      await notificationService.onDownloadResumed(id, item.name);
+    } else {
+      await notificationService.onDownloadStart(id, item.name, item.category);
+    }
 
     try {
       const result = await downloadResumable.downloadAsync();
 
-      if (result && result.uri) {
-        // Step 2: Save to permanent storage (MediaLibrary or SAF)
-        let publicUri = await this.saveToStorage(result.uri, item);
+      // pauseAsync()/cancelAsync() cancel the underlying call, which makes the
+      // native promise resolve null rather than reject. That isn't a failure —
+      // the pause/cancel handler already owns the status.
+      if (!result || !result.uri) return;
 
-        item.status = DOWNLOAD_STATUS.COMPLETED;
-        item.progress = 100;
-        item.endTime = Date.now();
-        item.speed = 0;
-        item.timeRemaining = 0;
-        item.localPath = publicUri;
-
-        // Show completion notification
-        await notificationService.onDownloadComplete(id, item.name);
-      } else {
-        throw new Error('Download failed — no result');
-      }
+      await this.completeDownload(id, result.uri);
     } catch (error: any) {
-      if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
-        const errorMsg = error.message || 'Unknown error';
-        // Connection abort = app was backgrounded. Mark as paused so user can retry.
-        const isConnectionAbort =
-          errorMsg.includes('connection abort') ||
-          errorMsg.includes('Connection reset') ||
-          errorMsg.includes('ECONNRESET');
-        if (isConnectionAbort) {
-          item.status = DOWNLOAD_STATUS.PAUSED;
-          item.error = undefined;
-          // Keep task for resume - DO NOT delete
-          // With foreground service, this should not happen anymore
-          await notificationService.onDownloadPaused(id, item.name);
-        } else {
-          item.status = DOWNLOAD_STATUS.FAILED;
-          item.error = errorMsg;
-          // Show failure notification
-          await notificationService.onDownloadFailed(id, item.name, errorMsg);
-          // Only delete task on failure
-          this.downloadTasks.delete(id);
-        }
-        item.speed = 0;
-        item.timeRemaining = 0;
-      }
+      // Server down, connection dropped, timeout, DNS — all the same thing:
+      // stop here and keep the bytes. No error-string matching.
+      await this.stallDownload(id, error?.message || 'Connection lost');
     } finally {
-      this.downloads.set(id, item);
       this.speedTrackers.delete(id);
       this.lastNotificationTime.delete(id);
-      // Only delete task if completed or failed, keep it for paused
-      if (item.status === DOWNLOAD_STATUS.COMPLETED) {
+      const current = this.downloads.get(id);
+      if (!current || current.status !== DOWNLOAD_STATUS.DOWNLOADING) {
         this.downloadTasks.delete(id);
       }
-      this.saveDownloads();
+      await this.saveDownloads();
       this.processQueue();
+    }
+  }
+
+  /**
+   * Park an interrupted download as PAUSED with its bytes left intact.
+   * Nothing needs storing to resume — the offset is re-read from disk.
+   */
+  private async stallDownload(
+    id: string,
+    reason: string,
+    userInitiated: boolean = false
+  ): Promise<void> {
+    const item = this.downloads.get(id);
+    if (!item) return;
+    // Don't resurrect something the user already cancelled, or clobber a
+    // status pauseDownload/cancelDownload has already settled.
+    if (
+      item.status === DOWNLOAD_STATUS.CANCELLED ||
+      item.status === DOWNLOAD_STATUS.COMPLETED ||
+      item.status === DOWNLOAD_STATUS.PAUSED
+    ) {
+      return;
+    }
+
+    const bytes = await this.getBytesOnDisk(this.getTempPath(item));
+    item.status = DOWNLOAD_STATUS.PAUSED;
+    item.error = userInitiated ? undefined : reason;
+    item.resumeData = bytes > 0 ? String(bytes) : undefined;
+    item.downloadedBytes = bytes;
+    item.speed = 0;
+    item.timeRemaining = 0;
+    this.downloads.set(id, item);
+    this.downloadTasks.delete(id);
+
+    console.log(`⏸️ [DOWNLOAD] "${item.name}" stopped at byte ${bytes} — ${reason}`);
+    await notificationService.onDownloadPaused(id, item.name);
+  }
+
+  /**
+   * Check the file is whole, then copy it into public storage.
+   *
+   * Copying a multi-GB movie is slow, so it gets its own status rather than
+   * sitting at 100% "downloading" and looking hung.
+   */
+  private async completeDownload(id: string, cacheUri: string): Promise<void> {
+    const item = this.downloads.get(id);
+    if (!item) return;
+
+    const bytes = await this.getBytesOnDisk(cacheUri);
+
+    // Short file means the transfer ended early. Treat it as an interruption
+    // instead of saving a truncated movie for the user to discover later.
+    if (item.totalBytes > 0 && bytes < item.totalBytes) {
+      await this.stallDownload(id, `Incomplete — ${bytes} of ${item.totalBytes} bytes`);
+      return;
+    }
+
+    // Overshooting means bytes got appended that shouldn't have been — a range
+    // request the server answered with a full 200, or a 416 error body. The
+    // file is unusable and its length is no longer a valid resume offset, so
+    // throw it away and start clean rather than saving garbage.
+    if (item.totalBytes > 0 && bytes > item.totalBytes) {
+      console.warn(`⚠️ [DOWNLOAD] "${item.name}" is ${bytes} bytes, expected ${item.totalBytes} — discarding`);
+      try {
+        await FileSystem.deleteAsync(cacheUri, { idempotent: true });
+      } catch (_) {}
+      item.progress = 0;
+      item.downloadedBytes = 0;
+      item.resumeData = undefined;
+      this.downloads.set(id, item);
+      await this.stallDownload(id, 'Corrupt partial file discarded — resume to restart');
+      return;
+    }
+
+    item.status = DOWNLOAD_STATUS.SAVING;
+    item.progress = 100;
+    item.downloadedBytes = bytes;
+    item.speed = 0;
+    item.timeRemaining = 0;
+    item.error = undefined;
+    this.downloads.set(id, item);
+    this.downloadTasks.delete(id);
+    await this.saveDownloads();
+    await notificationService.onDownloadSaving(id, item.name);
+
+    try {
+      const publicUri = await this.saveToStorage(cacheUri, item);
+      item.status = DOWNLOAD_STATUS.COMPLETED;
+      item.localPath = publicUri;
+      item.endTime = Date.now();
+      item.resumeData = undefined;
+      this.downloads.set(id, item);
+      await notificationService.onDownloadComplete(id, item.name);
+    } catch (error: any) {
+      // The bytes are downloaded and still in cache — only the copy failed, so
+      // retrying re-saves rather than re-downloading gigabytes.
+      const message = error?.message || 'Could not save file';
+      item.status = DOWNLOAD_STATUS.FAILED;
+      item.error = message;
+      this.downloads.set(id, item);
+      await notificationService.onDownloadFailed(id, item.name, message);
     }
   }
 
@@ -333,10 +451,12 @@ export class DownloadManager {
       }
 
       return publicUri;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to save to gallery:', error);
-      // Keep cache file as fallback
-      return cacheUri;
+      // Leave the cache file alone — the download is intact and re-saving it
+      // is cheap, so surface the failure instead of quietly "completing" with
+      // a file that only lives in a cache Android is free to purge.
+      throw new Error(`Could not save to storage: ${error?.message || 'unknown error'}`);
     }
   }
 
@@ -472,19 +592,10 @@ export class DownloadManager {
     if (now - lastTime > 2000 && percentage > 0 && percentage < 100) {
       this.lastNotificationTime.set(id, now);
       
-      // Keep resume data updated in memory
-      const task = this.downloadTasks.get(id);
-      if (task && typeof task.savable === 'function') {
-        try {
-          const savable = task.savable();
-          if (savable && savable.resumeData) {
-            item.resumeData = savable.resumeData;
-            // Best effort implicit save
-            this.downloads.set(id, item);
-            this.saveDownloads();
-          }
-        } catch (e) {}
-      }
+      // Persist progress periodically. Resume position is not stored here —
+      // it is read back off the partial file, which cannot drift out of sync.
+      this.downloads.set(id, item);
+      this.saveDownloads();
 
       notificationService.onDownloadProgress({
         id,
@@ -563,29 +674,32 @@ export class DownloadManager {
     const task = this.downloadTasks.get(id);
     if (task) {
       try {
-        const pauseState = await task.pauseAsync();
-        item.status = DOWNLOAD_STATUS.PAUSED;
-        if (pauseState && pauseState.resumeData) {
-          item.resumeData = pauseState.resumeData;
-        }
-        item.speed = 0;
-        item.timeRemaining = 0;
-        this.downloads.set(id, item);
-        this.speedTrackers.delete(id);
-        this.lastNotificationTime.delete(id);
-        // Show paused notification
-        await notificationService.onDownloadPaused(id, item.name);
-        await this.saveDownloads();
-        this.processQueue();
+        await task.pauseAsync();
       } catch (error) {
-        console.error('Failed to pause download:', error);
+        // Task already dead (connection dropped a moment ago). The bytes on
+        // disk are the source of truth either way, so park it regardless.
+        console.warn('pauseAsync failed, parking download anyway:', error);
       }
     }
+
+    await this.stallDownload(id, 'Paused', true);
+    this.speedTrackers.delete(id);
+    this.lastNotificationTime.delete(id);
+    await this.saveDownloads();
+    this.processQueue();
   }
 
+  /**
+   * Resume a stopped download.
+   *
+   * There is deliberately only one code path: executeDownloadNative reads the
+   * offset off disk, so it makes no difference whether this download was paused
+   * by hand, cut off by a dead server, or lost to a process restart.
+   */
   async resumeDownload(id: string): Promise<void> {
     const item = this.downloads.get(id);
-    if (!item || item.status !== DOWNLOAD_STATUS.PAUSED) return;
+    if (!item) return;
+    if (item.status !== DOWNLOAD_STATUS.PAUSED && item.status !== DOWNLOAD_STATUS.FAILED) return;
 
     if (Platform.OS === 'web') {
       // Web downloads are instant (anchor click) — just re-trigger
@@ -599,143 +713,21 @@ export class DownloadManager {
       return;
     }
 
-    const task = this.downloadTasks.get(id);
+    // Throw away any stale task object — a fresh one is built with the
+    // correct offset. Reusing one whose native call already failed cannot work.
+    this.downloadTasks.delete(id);
+
+    item.error = undefined;
+    item.speed = 0;
+    item.timeRemaining = 0;
 
     if (this.getActiveCount() < DOWNLOAD_CONFIG.MAX_CONCURRENT) {
-      if (task) {
-        // Slot available + task exists — resume the existing DownloadResumable
-        try {
-          const tracker = new SpeedTracker();
-          this.speedTrackers.set(id, tracker);
-
-          item.status = DOWNLOAD_STATUS.DOWNLOADING;
-          this.downloads.set(id, item);
-          await this.saveDownloads();
-
-          // Show resuming notification
-          await notificationService.onDownloadResumed(id, item.name);
-
-          task.resumeAsync().then(async result => {
-            if (result && result.uri) {
-              const publicUri = await this.saveToStorage(result.uri, item);
-              item.status = DOWNLOAD_STATUS.COMPLETED;
-              item.progress = 100;
-              item.endTime = Date.now();
-              item.speed = 0;
-              item.timeRemaining = 0;
-              item.localPath = publicUri;
-              this.downloads.set(id, item);
-              this.speedTrackers.delete(id);
-              this.downloadTasks.delete(id);
-              this.lastNotificationTime.delete(id);
-              this.saveDownloads();
-              this.processQueue();
-              // Show completion notification
-              await notificationService.onDownloadComplete(id, item.name);
-            }
-          }).catch(async (error: any) => {
-            if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
-              item.status = DOWNLOAD_STATUS.FAILED;
-              item.error = error.message || 'Unknown error';
-              item.speed = 0;
-              item.timeRemaining = 0;
-              this.downloads.set(id, item);
-              this.speedTrackers.delete(id);
-              this.downloadTasks.delete(id);
-              this.lastNotificationTime.delete(id);
-              this.saveDownloads();
-              this.processQueue();
-              // Show failure notification
-              await notificationService.onDownloadFailed(id, item.name, error.message || 'Unknown error');
-            }
-          });
-        } catch (error) {
-          console.error('Failed to resume download:', error);
-        }
-      } else if (item.resumeData && item.localPath) {
-        // Task was lost but we have resume data!
-        console.log(`🔄 [DOWNLOAD] Resuming lost task from resumeData... ID: ${id}`);
-        try {
-          const restoredTask = FileSystem.createDownloadResumable(
-            item.url,
-            item.localPath,
-            {},
-            (progress) => { this.handleProgress(id, progress); },
-            item.resumeData
-          );
-
-          console.log(`✓ [DOWNLOAD] Restored task created for: ${item.name}`);
-          this.downloadTasks.set(id, restoredTask);
-          const tracker = new SpeedTracker();
-          this.speedTrackers.set(id, tracker);
-
-          item.status = DOWNLOAD_STATUS.DOWNLOADING;
-          item.error = undefined;
-          this.downloads.set(id, item);
-          await this.saveDownloads();
-          await notificationService.onDownloadResumed(id, item.name);
-
-          restoredTask.resumeAsync().then(async result => {
-            if (result && result.uri) {
-              const publicUri = await this.saveToStorage(result.uri, item);
-              item.status = DOWNLOAD_STATUS.COMPLETED;
-              item.progress = 100;
-              item.endTime = Date.now();
-              item.speed = 0;
-              item.timeRemaining = 0;
-              item.localPath = publicUri;
-              this.downloads.set(id, item);
-              this.speedTrackers.delete(id);
-              this.downloadTasks.delete(id);
-              this.lastNotificationTime.delete(id);
-              this.saveDownloads();
-              this.processQueue();
-              await notificationService.onDownloadComplete(id, item.name);
-            }
-          }).catch(async (error: any) => {
-            if (item.status === DOWNLOAD_STATUS.DOWNLOADING) {
-              item.status = DOWNLOAD_STATUS.FAILED;
-              item.error = error.message || 'Unknown error';
-              item.speed = 0;
-              item.timeRemaining = 0;
-              this.downloads.set(id, item);
-              this.speedTrackers.delete(id);
-              this.downloadTasks.delete(id);
-              this.lastNotificationTime.delete(id);
-              this.saveDownloads();
-              this.processQueue();
-              await notificationService.onDownloadFailed(id, item.name, error.message || 'Unknown error');
-            }
-          });
-        } catch (error) {
-           console.error('Failed to resume with saved data:', error);
-           // Fallback to queued from scratch
-           item.progress = 0;
-           item.downloadedBytes = 0;
-           item.speed = 0;
-           item.timeRemaining = 0;
-           item.error = undefined;
-           item.status = DOWNLOAD_STATUS.QUEUED;
-           this.downloads.set(id, item);
-           this.executeDownload(id);
-        }
-      } else {
-        // Slot available but task was lost (e.g. connection abort cleaned it up)
-        // Restart the download from scratch
-        item.progress = 0;
-        item.downloadedBytes = 0;
-        item.speed = 0;
-        item.timeRemaining = 0;
-        item.error = undefined;
-        item.status = DOWNLOAD_STATUS.QUEUED;
-        this.downloads.set(id, item);
-        this.executeDownload(id);
-      }
+      this.downloads.set(id, item);
+      this.executeDownload(id);
     } else {
-      // No slot available — re-queue and process
+      // No slot — queue it. processQueue routes back through the same resume
+      // path, so waiting for a slot never costs the bytes already downloaded.
       item.status = DOWNLOAD_STATUS.QUEUED;
-      item.speed = 0;
-      item.timeRemaining = 0;
       this.downloads.set(id, item);
       if (!this.queue.includes(id)) {
         this.queue.push(id);
@@ -768,7 +760,16 @@ export class DownloadManager {
       try { await task.cancelAsync(); } catch (_) {}
     }
 
+    // Drop the partial file. Cancel means "forget this", so a later retry must
+    // start clean rather than resuming into bytes the user threw away.
+    try {
+      await FileSystem.deleteAsync(this.getTempPath(item), { idempotent: true });
+    } catch (_) {}
+
     item.status = DOWNLOAD_STATUS.CANCELLED;
+    item.progress = 0;
+    item.downloadedBytes = 0;
+    item.resumeData = undefined;
     item.speed = 0;
     item.timeRemaining = 0;
     this.downloads.set(id, item);
@@ -785,10 +786,9 @@ export class DownloadManager {
     const item = this.downloads.get(id);
     if (!item || (item.status !== DOWNLOAD_STATUS.FAILED && item.status !== DOWNLOAD_STATUS.CANCELLED)) return;
 
-    // Reset progress/error, reuse same ID
-    item.progress = 0;
-    item.downloadedBytes = 0;
-    item.totalBytes = 0;
+    // Progress is deliberately NOT reset. A retry after a failed save, or after
+    // the server went away, picks up whatever is already in the cache file;
+    // a cancelled item had its partial deleted, so it starts clean by itself.
     item.error = undefined;
     item.endTime = undefined;
     item.speed = 0;

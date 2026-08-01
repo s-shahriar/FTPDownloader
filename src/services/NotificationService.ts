@@ -12,11 +12,11 @@ interface DownloadNotificationData {
   eta: number;
   downloadedBytes: number;
   totalBytes: number;
-  status: 'downloading' | 'queued' | 'paused' | 'completed' | 'failed';
+  status: 'downloading' | 'queued' | 'paused' | 'saving' | 'completed' | 'failed';
   category?: string;
 }
 
-type DownloadStatus = 'downloading' | 'queued' | 'paused' | 'completed' | 'failed';
+type DownloadStatus = 'downloading' | 'queued' | 'paused' | 'saving' | 'completed' | 'failed';
 
 class NotificationService {
   private static instance: NotificationService;
@@ -250,6 +250,19 @@ class NotificationService {
     }
   }
 
+  async onDownloadSaving(id: string, filename: string) {
+    if (!this.permissionGranted) return;
+
+    const data = this.activeDownloads.get(id);
+    if (data) {
+      data.status = 'saving';
+      data.progress = 100;
+      data.speed = 0;
+      data.eta = 0;
+      await this.showDownloadNotification(data);
+    }
+  }
+
   async onDownloadResumed(id: string, filename: string) {
     if (!this.permissionGranted) return;
 
@@ -292,11 +305,16 @@ class NotificationService {
   private async showDownloadNotification(data: DownloadNotificationData) {
     if (Platform.OS === 'android' && CustomNotificationModule) {
       const isPaused = data.status === 'paused';
-      
+      const isSaving = data.status === 'saving';
+
       const speedText = data.speed > 0 ? this.formatSpeed(data.speed) : '';
       const etaText = data.eta > 0 ? this.formatTime(data.eta) + ' left' : '';
-      const statusText = isPaused ? 'Paused' : (speedText ? `${speedText} • ${etaText}` : '');
-      
+      const statusText = isSaving
+        ? 'Saving to storage…'
+        : isPaused
+        ? 'Paused'
+        : (speedText ? `${speedText} • ${etaText}` : '');
+
       CustomNotificationModule.showNotification(data.id, {
         title: data.filename,
         subtitle: `${this.formatBytes(data.downloadedBytes)} / ${this.formatBytes(data.totalBytes)}`,
@@ -323,6 +341,8 @@ class NotificationService {
 
     const subtitle = data.status === 'downloading'
       ? [speedText, etaText].filter(Boolean).join(' • ')
+      : data.status === 'saving'
+      ? `Saving to storage — ${this.formatBytes(data.totalBytes)}`
       : `${this.formatBytes(data.downloadedBytes)} / ${this.formatBytes(data.totalBytes)}`;
 
     // Clean expanded view with detailed breakdown

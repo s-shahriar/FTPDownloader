@@ -187,6 +187,7 @@ export const DOWNLOAD_STATUS = {
   QUEUED: 'queued' as const,
   DOWNLOADING: 'downloading' as const,
   PAUSED: 'paused' as const,
+  SAVING: 'saving' as const,
   COMPLETED: 'completed' as const,
   FAILED: 'failed' as const,
   CANCELLED: 'cancelled' as const,
