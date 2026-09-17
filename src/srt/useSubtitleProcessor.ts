@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Alert } from 'react-native';
+import { showAlert } from '../components/AlertModal';
 import { SRTGeminiModel, SRTSelectedFile, RateLimitError, CountMismatchError, BatchStats } from './types';
 import { readSubtitleFile, saveSubtitleFile } from './fileOperations';
 import { detectFormat, parse, buildSubtitle, makeOutputName } from './subtitleParser';
@@ -63,11 +63,11 @@ export function useSubtitleProcessor({
   const processSubtitle = async () => {
     const key = await getGeminiApiKey();
     if (!key) {
-      Alert.alert('Missing API Key', 'Open Settings and add your Gemini API key first.');
+      showAlert('Missing API Key', 'Open Settings and add your Gemini API key first.');
       return;
     }
     if (!selectedFile) {
-      Alert.alert('Missing File', 'Select a subtitle file first.');
+      showAlert('Missing File', 'Select a subtitle file first.');
       return;
     }
 
@@ -132,7 +132,7 @@ export function useSubtitleProcessor({
               stat.retryCount++;
               const rlStart = Date.now();
               await sleepWithCountdown(err.retryAfterMs, remaining => {
-                setStatusMsg(`Rate limited — retrying in ${remaining}s…`);
+                setStatusMsg(`${err.modelBusy ? 'Model busy' : 'Rate limited'} — retrying in ${remaining}s…`);
               }, signal);
               stat.rateLimitWaitMs += Date.now() - rlStart;
             } else if (err instanceof CountMismatchError && attempt < maxRetries) {
@@ -226,7 +226,7 @@ export function useSubtitleProcessor({
         setStatusMsg('');
       } else {
         onLog(`\nError: ${err.message}`);
-        Alert.alert('Error', err.message);
+        showAlert('Error', err.message);
       }
     } finally {
       abortRef.current = null;

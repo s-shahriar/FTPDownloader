@@ -23,10 +23,12 @@ export interface SRTSelectedFile {
 
 export class RateLimitError extends Error {
   retryAfterMs: number;
+  modelBusy: boolean; // 503 "high demand" rather than a quota limit
 
-  constructor(message: string, retryAfterMs: number) {
+  constructor(message: string, retryAfterMs: number, modelBusy = false) {
     super(message);
     this.retryAfterMs = retryAfterMs;
+    this.modelBusy = modelBusy;
     this.name = 'RateLimitError';
   }
 }

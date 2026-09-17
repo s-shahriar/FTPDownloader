@@ -81,6 +81,10 @@ Respond with ONLY the JSON array. No explanation. No markdown code fences.`;
       }
       throw new RateLimitError(data.error.message ?? 'Rate limited', retryAfterMs);
     }
+    // Newer models answer 503 "high demand" to free-tier keys at busy times; it usually clears in seconds
+    if (data.error.code === 503) {
+      throw new RateLimitError(data.error.message ?? 'Model busy', 15_000, true);
+    }
     throw new Error(data.error.message ?? 'Gemini API error');
   }
 
