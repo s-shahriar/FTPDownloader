@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: '#1a0e00', // dark: the button takes the error color, which can be yellow or orange
     letterSpacing: 0.3,
   },
 });

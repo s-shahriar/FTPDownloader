@@ -228,6 +228,7 @@ export const DOWNLOAD_CONFIG = {
 export const COLORS = {
   // Brand
   primary: '#818cf8',        // indigo-400 (bright for dark bg)
+  primaryStrong: '#4f46e5',  // indigo-600: filled surfaces with white text (#818cf8 is too light for it)
   secondary: '#a78bfa',      // violet-400
   accent: '#e8a020',         // amber/gold (kept for Downloads CTA)
   accentAlt: '#22d3ee',      // cyan (secondary accent)

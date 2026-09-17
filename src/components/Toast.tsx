@@ -106,7 +106,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: COLORS.text,
+    backgroundColor: COLORS.card2,
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.35)',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
     width: '100%',
     ...Platform.select({
       web: {
-        boxShadow: '0 8px 32px rgba(0,0,0,0.2)' as any,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)' as any,
       },
       android: { elevation: 8 },
       ios: {
@@ -129,14 +131,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
-    color: '#fff',
+    color: COLORS.text,
     lineHeight: 18,
   },
   actionBtn: {
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(61,127,255,0.2)',
+    backgroundColor: 'rgba(129,140,248,0.18)',
   },
   actionText: {
     fontSize: 12,

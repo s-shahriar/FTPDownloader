@@ -1,4 +1,5 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
+import { showAlert } from '../components/AlertModal';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -121,7 +122,7 @@ export async function saveSubtitleFile(
       const sourceParentUri = getParentDirectoryUri(sourceUri);
       if (sourceParentUri) {
         await saveToSafDirectory(sourceParentUri, filename, content);
-        Alert.alert('Saved', `File saved:\n${filename}`);
+        showAlert('Saved', `File saved:\n${filename}`);
         return;
       }
     }
@@ -134,7 +135,7 @@ export async function saveSubtitleFile(
         await FileSystem.writeAsStringAsync(outputUri, content, {
           encoding: FileSystem.EncodingType.UTF8,
         });
-        Alert.alert('Saved', `File saved:\n${filename}`);
+        showAlert('Saved', `File saved:\n${filename}`);
         return;
       }
     }
@@ -146,7 +147,7 @@ export async function saveSubtitleFile(
 
     if (dirUri) {
       await saveToSafDirectory(dirUri, filename, content);
-      Alert.alert('Saved', `File saved:\n${filename}`);
+      showAlert('Saved', `File saved:\n${filename}`);
       return;
     }
 
@@ -156,7 +157,7 @@ export async function saveSubtitleFile(
     try {
       await saveToAppDirAndShare(filename, content);
     } catch (fallbackError: any) {
-      Alert.alert('Save Failed', fallbackError.message);
+      showAlert('Save Failed', fallbackError.message);
     }
   }
 }
@@ -170,7 +171,7 @@ async function saveToAppDirAndShare(filename: string, content: string): Promise<
     encoding: FileSystem.EncodingType.UTF8,
   });
 
-  Alert.alert(
+  showAlert(
     'File Saved',
     'File saved to app storage. Use "Share" to move it to another location.',
     [

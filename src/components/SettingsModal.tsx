@@ -507,9 +507,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(61,127,255,0.08)',
+    backgroundColor: 'rgba(129,140,248,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(61,127,255,0.2)',
+    borderColor: 'rgba(129,140,248,0.2)',
   },
   pickerBtnText: {
     fontSize: 12,
@@ -591,12 +591,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 20px rgba(61,127,255,0.35)' as any,
+        boxShadow: '0 4px 20px rgba(129,140,248,0.35)' as any,
       },
       android: { elevation: 4 },
     }),
@@ -614,9 +614,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(61,127,255,0.08)',
+    backgroundColor: 'rgba(129,140,248,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(61,127,255,0.2)',
+    borderColor: 'rgba(129,140,248,0.2)',
     marginBottom: 8,
   },
   updateBtnText: {

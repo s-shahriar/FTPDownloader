@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff8ec',
+    backgroundColor: 'rgba(245,158,11,0.12)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.warning,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     ...Platform.select({
       android: { elevation: 4 },
-      web: { boxShadow: '0 4px 20px rgba(61,127,255,0.35)' as any },
+      web: { boxShadow: '0 4px 20px rgba(129,140,248,0.35)' as any },
     }),
   },
   processBtnDisabled: {

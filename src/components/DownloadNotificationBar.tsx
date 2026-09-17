@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
   },
   bar: {
     borderRadius: 14,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 20px rgba(61,127,255,0.4)' as any,
+        boxShadow: '0 4px 20px rgba(129,140,248,0.4)' as any,
       },
       android: { elevation: 8 },
     }),

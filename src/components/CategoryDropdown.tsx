@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   checkMark: {
     position: 'absolute', top: 8, right: 8,
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     alignItems: 'center', justifyContent: 'center',
   },
   closeBtn: { width: 32, height: 32, borderRadius: 9, backgroundColor: COLORS.card2, alignItems: 'center', justifyContent: 'center' },

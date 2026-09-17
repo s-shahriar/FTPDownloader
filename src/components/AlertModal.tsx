@@ -300,11 +300,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     alignItems: 'center',
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 16px rgba(61,127,255,0.3)' as any,
+        boxShadow: '0 4px 16px rgba(129,140,248,0.3)' as any,
       },
       android: { elevation: 3 },
     }),
