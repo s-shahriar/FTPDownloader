@@ -1,6 +1,6 @@
 export type DownloadStatus = 'pending' | 'queued' | 'downloading' | 'paused' | 'saving' | 'completed' | 'failed' | 'cancelled';
 
-export type CategoryType = 'movie_with_year' | 'movie_flat' | 'tv_series' | 'korean_tv_series' | 'movie_merged' | 'movie_foreign' | 'anime_series';
+export type CategoryType = 'movie_with_year' | 'movie_flat' | 'tv_series' | 'korean_tv_series' | 'movie_merged' | 'movie_foreign' | 'anime_series' | 'all';
 export type YearFormat = 'paren' | 'paren_1080p' | 'bare' | 'none';
 
 export interface MergedSource {
@@ -10,6 +10,18 @@ export interface MergedSource {
   label: string; // e.g. "720p", "1080p"
 }
 
+/**
+ * A folder searched with the h5ai search API. The search walks every
+ * subfolder below `path`, so one scope covers a whole category.
+ */
+export interface SearchScope {
+  server: string;
+  path: string;
+  yearFormat?: YearFormat;     // set when `path` contains year folders, enables year narrowing
+  label?: string;              // fixed badge for every result, e.g. "1080p"
+  labelFromSubfolder?: boolean; // badge = first folder below `path`, e.g. "Hindi Movies"
+}
+
 export interface FTPItem {
   name: string;
   path: string;
@@ -17,6 +29,7 @@ export interface FTPItem {
   type: 'file' | 'folder';
   sourceLabel?: string; // quality tag for merged results, e.g. "720p"
   size?: string;
+  sizeBytes?: number;
   modified?: string | Date;
 }
 
@@ -73,6 +86,7 @@ export interface Category {
   yearFormat?: YearFormat;
   mergedSources?: MergedSource[];
   excludeSubfolders?: string[]; // subfolder names to skip (e.g. already-covered languages)
+  searchScopes?: SearchScope[]; // overrides the scopes derived from server/path/mergedSources
 }
 
 export interface SearchResult {

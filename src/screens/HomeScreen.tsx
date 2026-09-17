@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,14 +17,15 @@ import { useApp } from '../contexts/AppContext';
 import { CategoryDropdown } from '../components/CategoryDropdown';
 import { ResultItem } from '../components/ResultItem';
 import { SearchHistorySection } from '../components/SearchHistorySection';
-import { FTPClient } from '../services/FTPClient';
+import { FTPClient, SearchInputError } from '../services/FTPClient';
 import { showAlert } from '../components/AlertModal';
+import { showToast } from '../components/Toast';
 import { ErrorModal, ApiError } from '../components/ErrorModal';
 import { AISearchModal } from '../components/AISearchModal';
 import { GeminiMatch } from '../services/GeminiService';
 import { parseApiError } from '../utils/errorHandler';
-import { COLORS } from '../constants';
-import { FTPItem } from '../types';
+import { COLORS, SEARCH_CONFIG } from '../constants';
+import { Category, FTPItem } from '../types';
 
 const Wrapper = Platform.OS === 'web' ? View : SafeAreaView;
 
@@ -40,8 +41,10 @@ export function HomeScreen({ navigation }: any) {
   const [error, setError] = useState<ApiError | null>(null);
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [resultsTruncated, setResultsTruncated] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
-  const needsYear = selectedCategory ? FTPClient.categoryNeedsYear(selectedCategory) : false;
+  const supportsYear = selectedCategory ? FTPClient.categorySupportsYear(selectedCategory) : false;
 
   const handleAISelect = (match: GeminiMatch) => {
     setAiModalVisible(false);
@@ -50,6 +53,49 @@ export function HomeScreen({ navigation }: any) {
     }
     if (match.year) {
       setYear(match.year);
+    }
+  };
+
+  /**
+   * Run a search, cancelling any search still in flight.
+   * Returns null when the search was cancelled or failed (errors are already shown).
+   */
+  const runSearch = async (category: Category, query: string, searchYear: string): Promise<FTPItem[] | null> => {
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    setIsLoading(true);
+    setSearchResults([]);
+    setResultsTruncated(false);
+
+    try {
+      console.log('=== SEARCH START ===', category.name, `(${category.type})`, query, searchYear || '(no year)');
+      const outcome = await new FTPClient().search(category, query, searchYear, controller.signal);
+      console.log('=== SEARCH END ===', outcome.items.length, 'results',
+        outcome.failedSources.length ? `failed: ${outcome.failedSources.join(', ')}` : '',
+        outcome.usedFallback ? '(folder listing fallback)' : '');
+
+      if (outcome.failedSources.length > 0) {
+        // Non-blocking: a server down for maintenance would otherwise interrupt every search
+        showToast(`Partial results: couldn't reach ${outcome.failedSources.join(', ')}`);
+      }
+      setResultsTruncated(outcome.truncated);
+      return outcome.items;
+    } catch (err: any) {
+      if (err.name === 'AbortError') return null;
+      if (err instanceof SearchInputError) {
+        showAlert('Refine Search', err.message);
+        return null;
+      }
+      console.error('Search error:', err);
+      setError(parseApiError(err, err.endpoint || category.server + category.path));
+      return null;
+    } finally {
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+        setIsLoading(false);
+      }
     }
   };
 
@@ -64,78 +110,17 @@ export function HomeScreen({ navigation }: any) {
       return;
     }
 
-    if (needsYear && !year.trim()) {
-      showAlert('Enter Year', 'This category requires a year to search (e.g. 2024)');
-      return;
-    }
-
-    setIsLoading(true);
-    setSearchResults([]);
     dispatch({ type: 'SET_SEARCH_QUERY', payload: searchQuery });
+    const searchYear = supportsYear ? year.trim() : '';
+    const items = await runSearch(selectedCategory, searchQuery, searchYear);
+    if (!items) return;
 
-    try {
-      const ftpClient = new FTPClient();
-
-      console.log('=== SEARCH START ===');
-      console.log('Category:', selectedCategory.name, `(${selectedCategory.type})`);
-      console.log('Search Query:', searchQuery);
-      if (needsYear) console.log('Year:', year);
-
-      let filtered: FTPItem[];
-
-      if (selectedCategory.type === 'movie_merged') {
-        const { items: mergedItems, failedSources } = await ftpClient.searchMerged(selectedCategory, searchQuery, year.trim());
-        filtered = mergedItems;
-        console.log('Merged results:', filtered.length, 'Failed sources:', failedSources);
-        if (failedSources.length > 0) {
-          showAlert(
-            'Partial Results',
-            `Could not reach: ${failedSources.join(', ')}. Results shown may be incomplete.`,
-          );
-        }
-      } else if (selectedCategory.type === 'movie_foreign') {
-        filtered = await ftpClient.searchForeign(selectedCategory, searchQuery);
-        console.log('Foreign results:', filtered.length);
-      } else {
-        const searchUrl = FTPClient.buildSearchUrl(
-          selectedCategory,
-          searchQuery,
-          year.trim() || undefined,
-        );
-        console.log('Search URL:', searchUrl);
-
-        const items = await ftpClient.fetchDirectory(searchUrl);
-        console.log('Total items fetched:', items.length);
-
-        filtered = items.filter((item: FTPItem) => {
-          return item.type === 'folder' &&
-            item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
-        });
-      }
-
-      console.log('Filtered results:', filtered.length);
-      console.log('=== SEARCH END ===');
-
-      if (filtered.length === 0) {
-        const yearInfo = needsYear && year.trim() ? ` in ${year}` : '';
-        showAlert('No Results', `No results found for "${searchQuery}"${yearInfo}`);
-      } else {
-        setSearchResults(filtered);
-        // Save to search history after successful search
-        await saveSearchHistory(searchQuery, selectedCategory.name);
-      }
-    } catch (err: any) {
-      console.error('Search error:', err);
-
-      // Parse the error and show in error modal
-      const searchUrl = selectedCategory.type === 'movie_merged' || selectedCategory.type === 'movie_foreign'
-        ? selectedCategory.server + selectedCategory.path
-        : FTPClient.buildSearchUrl(selectedCategory, searchQuery, year.trim() || undefined);
-
-      const apiError = parseApiError(err, searchUrl);
-      setError(apiError);
-    } finally {
-      setIsLoading(false);
+    if (items.length === 0) {
+      const yearInfo = searchYear ? ` in ${searchYear}` : '';
+      showAlert('No Results', `No results found for "${searchQuery}"${yearInfo}`);
+    } else {
+      setSearchResults(items);
+      await saveSearchHistory(searchQuery, selectedCategory.name);
     }
   };
 
@@ -151,7 +136,18 @@ export function HomeScreen({ navigation }: any) {
   };
 
   const handleDownload = (item: FTPItem) => {
-    handleItemPress(item);
+    if (item.type === 'folder') {
+      handleItemPress(item);
+      return;
+    }
+    // A loose file matched by search: open its folder, where it can be downloaded
+    const folderUrl = item.url.slice(0, item.url.lastIndexOf('/') + 1);
+    navigation.navigate('SearchResults', {
+      folderUrl,
+      folderName: decodeURIComponent(folderUrl.split('/').filter(Boolean).pop() || item.name),
+      category: selectedCategory,
+      query: searchQuery,
+    });
   };
 
   const onRefresh = async () => {
@@ -173,49 +169,25 @@ export function HomeScreen({ navigation }: any) {
     // Set the category and query
     dispatch({ type: 'SET_CATEGORY', payload: category });
     setSearchQuery(item.query);
-    setIsLoading(true);
+    setYear('');
 
-    try {
-      const ftpClient = new FTPClient();
-      const needsYear = FTPClient.categoryNeedsYear(category);
+    // History doesn't store a year; the search doesn't need one
+    const items = await runSearch(category, item.query, '');
+    if (!items) return;
 
-      let filtered: FTPItem[];
-
-      if (category.type === 'movie_merged') {
-        const { items: mergedItems } = await ftpClient.searchMerged(category, item.query, '');
-        filtered = mergedItems;
-      } else if (category.type === 'movie_foreign') {
-        filtered = await ftpClient.searchForeign(category, item.query);
-      } else {
-        const searchUrl = FTPClient.buildSearchUrl(category, item.query, undefined);
-        const items = await ftpClient.fetchDirectory(searchUrl);
-        filtered = items.filter((ftpItem: FTPItem) => {
-          return ftpItem.type === 'folder' &&
-            ftpItem.name.toLowerCase().includes(item.query.toLowerCase().trim());
-        });
-      }
-
-      if (filtered.length === 0) {
-        showAlert('No Results', `No results found for "${item.query}"`);
-      } else if (filtered.length === 1) {
-        // Single result - navigate directly to folder contents
-        navigation.navigate('SearchResults', {
-          folderUrl: filtered[0].url,
-          folderName: filtered[0].name,
-          category: category,
-          query: item.query,
-        });
-      } else {
-        // Multiple results - show them on home screen for selection
-        setSearchResults(filtered);
-      }
-    } catch (err: any) {
-      console.error('History search error:', err);
-      const searchUrl = category.server + category.path;
-      const apiError = parseApiError(err, searchUrl);
-      setError(apiError);
-    } finally {
-      setIsLoading(false);
+    if (items.length === 0) {
+      showAlert('No Results', `No results found for "${item.query}"`);
+    } else if (items.length === 1 && items[0].type === 'folder') {
+      // Single result - navigate directly to folder contents
+      navigation.navigate('SearchResults', {
+        folderUrl: items[0].url,
+        folderName: items[0].name,
+        category: category,
+        query: item.query,
+      });
+    } else {
+      // Multiple results - show them on home screen for selection
+      setSearchResults(items);
     }
   };
 
@@ -264,22 +236,21 @@ export function HomeScreen({ navigation }: any) {
           {selectedCategory && (
             <View style={styles.categoryHint}>
               <MaterialIcons
-                name={selectedCategory.type === 'tv_series' || selectedCategory.type === 'korean_tv_series' || selectedCategory.type === 'anime_series' ? 'tv' : 'movie'}
+                name={selectedCategory.type === 'all' ? 'apps' : selectedCategory.type === 'tv_series' || selectedCategory.type === 'korean_tv_series' || selectedCategory.type === 'anime_series' ? 'tv' : 'movie'}
                 size={12}
                 color={COLORS.textDim}
               />
               <Text style={styles.categoryHintText}>
-                {selectedCategory.type === 'tv_series' && 'Auto-routes by first letter (A-L, M-R, S-Z)'}
-                {selectedCategory.type === 'korean_tv_series' && 'Flat listing — no year needed'}
-                {selectedCategory.type === 'movie_flat' && 'Flat listing — no year needed'}
-                {selectedCategory.type === 'movie_with_year' && `Year required · format: ${selectedCategory.yearFormat === 'bare' ? 'YYYY' : selectedCategory.yearFormat === 'paren_1080p' ? '(YYYY) 1080p' : '(YYYY)'}`}
+                {selectedCategory.type === 'all' && 'Searches every DhakaFlix server · year optional'}
+                {(selectedCategory.type === 'tv_series' || selectedCategory.type === 'anime_series') && 'Searches every letter group — no year needed'}
+                {(selectedCategory.type === 'korean_tv_series' || selectedCategory.type === 'movie_flat') && 'Searches all titles — no year needed'}
+                {selectedCategory.type === 'movie_with_year' && 'Searches all years · year optional, narrows the search'}
                 {selectedCategory.type === 'movie_merged' && (
                   selectedCategory.mergedSources
-                    ? `Searches ${selectedCategory.mergedSources.map(s => s.label).join(' + ')} together`
-                    : 'Searches multiple sources together'
+                    ? `Searches ${selectedCategory.mergedSources.map(s => s.label).join(' + ')} together · year optional`
+                    : 'Searches multiple sources together · year optional'
                 )}
                 {selectedCategory.type === 'movie_foreign' && 'Searches all language folders — no year needed'}
-                {selectedCategory.type === 'anime_series' && 'Auto-routes by first letter (A-F, G-M, N-S, T-Z)'}
               </Text>
             </View>
           )}
@@ -325,13 +296,13 @@ export function HomeScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {needsYear && (
+            {supportsYear && (
               <View style={styles.yearRow}>
                 <View style={[styles.yearInputWrap, yearFocused && styles.inputFocused]}>
                   <MaterialIcons name="calendar-today" size={16} color={yearFocused ? COLORS.primary : COLORS.textDim} style={styles.inputIcon} />
                   <TextInput
                     style={styles.fieldInput}
-                    placeholder="Year  (e.g. 2024)"
+                    placeholder="Year (optional)"
                     placeholderTextColor={COLORS.textDim}
                     value={year}
                     onChangeText={setYear}
@@ -356,7 +327,7 @@ export function HomeScreen({ navigation }: any) {
               </View>
             )}
 
-            {!needsYear && (
+            {!supportsYear && (
               <TouchableOpacity
                 style={styles.searchFullButton}
                 onPress={handleSearch}
@@ -379,14 +350,17 @@ export function HomeScreen({ navigation }: any) {
           {searchResults.length > 0 && (
             <View style={styles.resultsContainer}>
               <Text style={styles.resultsTitle}>
-                Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                {resultsTruncated
+                  ? `Showing top ${searchResults.length} results — refine your search`
+                  : `Found ${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`}
               </Text>
               {searchResults.map((item, index) => (
                 <ResultItem
-                  key={`${item.name}-${index}`}
+                  key={item.url}
                   item={item}
                   onPress={handleItemPress}
                   onDownload={handleDownload}
+                  showPoster={index < SEARCH_CONFIG.MAX_POSTERS}
                 />
               ))}
             </View>

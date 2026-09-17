@@ -13,6 +13,22 @@ export const FTP_SERVERS = {
 export const BASE_URL = `http://${FTP_SERVERS.PRIMARY}`;
 
 export const CATEGORIES: Record<string, Category> = {
+  ALL: {
+    id: 'all',
+    name: 'All Categories',
+    path: '/',
+    server: 'http://172.16.50.7',
+    icon: 'apps',
+    color: '#818cf8',
+    type: 'all',
+    // Server 8 only hosts games and software, so it is left out
+    searchScopes: [
+      { server: 'http://172.16.50.7', path: '/DHAKA-FLIX-7/', labelFromSubfolder: true },
+      { server: 'http://172.16.50.14', path: '/DHAKA-FLIX-14/', labelFromSubfolder: true },
+      { server: 'http://172.16.50.12', path: '/DHAKA-FLIX-12/', labelFromSubfolder: true },
+      { server: 'http://172.16.50.9', path: '/DHAKA-FLIX-9/', labelFromSubfolder: true },
+    ],
+  },
   ENGLISH_MOVIES: {
     id: 'english_movies',
     name: 'English Movies',
@@ -191,6 +207,17 @@ export const DOWNLOAD_STATUS = {
   COMPLETED: 'completed' as const,
   FAILED: 'failed' as const,
   CANCELLED: 'cancelled' as const,
+};
+
+export const SEARCH_CONFIG = {
+  MIN_QUERY_CHARS: 3,           // letters/digits; short queries return tens of thousands of hits
+  MIN_QUERY_CHARS_WITH_YEAR: 2, // a year folder is small enough for titles like "Up"
+  REQUEST_TIMEOUT_MS: 10000,    // the slowest healthy server takes ~3s for a whole-category search
+  DEAD_SERVER_TTL_MS: 120000,   // skip a server that just failed (e.g. down for maintenance)
+  MAX_RESULTS: 200,
+  POSTER_CONCURRENCY: 4,
+  POSTER_TIMEOUT_MS: 8000,
+  MAX_POSTERS: 40,              // posters are full-size JPEGs (~200KB each)
 };
 
 export const DOWNLOAD_CONFIG = {

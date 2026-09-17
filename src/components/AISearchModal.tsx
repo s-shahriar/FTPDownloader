@@ -89,7 +89,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
     cat ? cat.color : COLORS.textDim;
 
   const needsYear = (cat: Category | null): boolean =>
-    cat ? FTPClient.categoryNeedsYear(cat) : false;
+    cat ? FTPClient.categorySupportsYear(cat) : false;
 
   return (
     <Modal

@@ -1,34 +1,60 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FTPItem } from '../types';
 import { COLORS } from '../constants';
+import { FTPClient } from '../services/FTPClient';
 
 interface ResultItemProps {
   item: FTPItem;
   onPress: (item: FTPItem) => void;
   onDownload: (item: FTPItem) => void;
+  showPoster?: boolean; // look up the folder's poster image (costs one small request)
 }
 
-export function ResultItem({ item, onPress, onDownload }: ResultItemProps) {
+export function ResultItem({ item, onPress, onDownload, showPoster = false }: ResultItemProps) {
   const isFolder = item.type === 'folder';
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPosterUrl(null);
+    if (!showPoster || !isFolder) return;
+    let active = true;
+    FTPClient.findPoster(item.url).then(url => {
+      if (active) setPosterUrl(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [item.url, showPoster, isFolder]);
 
   return (
     <TouchableOpacity style={styles.container} onPress={() => onPress(item)}>
-      <View style={[styles.iconContainer, isFolder ? styles.iconFolder : styles.iconFile]}>
-        <MaterialIcons
-          name={isFolder ? 'folder' : 'movie'}
-          size={24}
-          color={isFolder ? COLORS.accent : COLORS.primary}
+      {posterUrl ? (
+        <Image
+          source={{ uri: posterUrl }}
+          style={styles.poster}
+          resizeMode="cover"
+          resizeMethod="resize"
+          onError={() => setPosterUrl(null)}
         />
-      </View>
+      ) : (
+        <View style={[styles.iconContainer, isFolder ? styles.iconFolder : styles.iconFile]}>
+          <MaterialIcons
+            name={isFolder ? 'folder' : 'movie'}
+            size={24}
+            color={isFolder ? COLORS.accent : COLORS.primary}
+          />
+        </View>
+      )}
       <View style={styles.infoContainer}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={2}>
@@ -45,7 +71,7 @@ export function ResultItem({ item, onPress, onDownload }: ResultItemProps) {
         )}
         {item.modified && (
           <Text style={styles.meta}>
-            Modified: {new Date(item.modified).toLocaleDateString()}
+            {isFolder ? 'Added' : 'Modified'}: {new Date(item.modified).toLocaleDateString()}
           </Text>
         )}
       </View>
@@ -91,6 +117,7 @@ const styles = StyleSheet.create({
     }),
   },
   iconContainer: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  poster: { width: 44, height: 66, borderRadius: 8, backgroundColor: COLORS.card2 },
   iconFolder: { backgroundColor: 'rgba(232,160,32,0.16)' },
   iconFile: { backgroundColor: 'rgba(129,140,248,0.16)' },
   infoContainer: { flex: 1, marginLeft: 12 },

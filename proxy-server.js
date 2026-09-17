@@ -33,6 +33,28 @@ app.get('/proxy', async (req, res) => {
   }
 });
 
+// POST passthrough for the h5ai JSON API (search)
+app.post('/proxy', express.json(), async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL parameter is required' });
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const text = await response.text();
+    res.status(response.status).type(response.headers.get('content-type') || 'text/plain').send(text);
+  } catch (error) {
+    console.error('Proxy error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Proxy server running' });

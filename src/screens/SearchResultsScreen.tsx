@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -24,9 +25,20 @@ import { FTPItem, Category } from '../types';
 
 const Wrapper = Platform.OS === 'web' ? View : SafeAreaView;
 
+/** Decoded path of a folder URL, without the server origin (results can come from any server). */
+function displayPath(url: string): string {
+  const path = url.replace(/^https?:\/\/[^/]+/, '');
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
 export function SearchResultsScreen({ route, navigation }: any) {
   const { folderUrl, folderName, category, query } = route.params;
   const [results, setResults] = useState<FTPItem[]>([]);
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [showSAFOnboarding, setShowSAFOnboarding] = useState(false);
@@ -44,6 +56,7 @@ export function SearchResultsScreen({ route, navigation }: any) {
       const ftpClient = new FTPClient();
       const items = await ftpClient.fetchDirectory(url);
       const filtered = FTPClient.filterMediaItems(items);
+      setPosterUrl(FTPClient.pickPoster(items));
       console.log(`Loaded ${items.length} items, showing ${filtered.length} (filtered)`);
       setResults(filtered);
     } catch (err: any) {
@@ -174,10 +187,21 @@ export function SearchResultsScreen({ route, navigation }: any) {
 
       {/* Path breadcrumb */}
       <View style={styles.pathContainer}>
-        <Text style={styles.pathLabel}>{category.name}</Text>
-        <Text style={styles.pathText} numberOfLines={2}>
-          {decodeURIComponent(folderUrl.replace(category.server, ''))}
-        </Text>
+        {posterUrl && (
+          <Image
+            source={{ uri: posterUrl }}
+            style={styles.poster}
+            resizeMode="cover"
+            resizeMethod="resize"
+            onError={() => setPosterUrl(null)}
+          />
+        )}
+        <View style={styles.pathInfo}>
+          <Text style={styles.pathLabel}>{category.name}</Text>
+          <Text style={styles.pathText} numberOfLines={3}>
+            {displayPath(folderUrl)}
+          </Text>
+        </View>
       </View>
 
       {isLoading ? (
@@ -269,12 +293,17 @@ const styles = StyleSheet.create({
 
   // ── Path breadcrumb ──
   pathContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     backgroundColor: COLORS.card,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  pathInfo: { flex: 1 },
+  poster: { width: 60, height: 90, borderRadius: 8, backgroundColor: COLORS.card2 },
   pathLabel: {
     fontSize: 9,
     fontWeight: '700',

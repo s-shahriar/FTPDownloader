@@ -1,8 +1,42 @@
 import { Platform } from 'react-native';
-import { VIDEO_EXTENSIONS, SUBTITLE_EXTENSIONS, TV_ALPHA_GROUPS, ANIME_ALPHA_GROUPS } from '../constants';
-import { FTPItem, Category, YearFormat } from '../types';
+import { VIDEO_EXTENSIONS, SUBTITLE_EXTENSIONS, TV_ALPHA_GROUPS, ANIME_ALPHA_GROUPS, SEARCH_CONFIG } from '../constants';
+import { FTPItem, Category, YearFormat, SearchScope } from '../types';
 
 const LOCAL_PROXY = 'http://localhost:3001/proxy?url=';
+
+const IMAGE_EXTENSION_RE = /\.(jpe?g|png|webp)$/i;
+const YEAR_RE = /^\d{4}$/;
+
+export interface SearchOutcome {
+  items: FTPItem[];
+  failedSources: string[]; // human-readable, e.g. "172.16.50.9 (Anime & Cartoon)"
+  truncated: boolean;      // more than SEARCH_CONFIG.MAX_RESULTS matches
+  usedFallback: boolean;   // h5ai search was unavailable, folder listing was used
+}
+
+interface SearchHit {
+  href: string;         // URL-encoded path as returned by h5ai
+  time?: number;        // ms since epoch
+  size?: number | null; // bytes, null for folders
+}
+
+/** Thrown for input the search can't run with; shown as an alert, not an error modal. */
+export class SearchInputError extends Error {
+  name = 'SearchInputError';
+}
+
+/** The server answered, but not with h5ai search JSON (search disabled or not h5ai). */
+class SearchUnsupportedError extends Error {
+  name = 'SearchUnsupportedError';
+}
+
+// Servers that failed recently → timestamp of the failure
+const deadServers = new Map<string, number>();
+
+// Folder URL → poster URL lookup, shared across screens
+const posterCache = new Map<string, Promise<string | null>>();
+const posterQueue: Array<() => void> = [];
+let activePosterFetches = 0;
 
 export class FTPClient {
   private getProxiedUrl(url: string): string {
@@ -94,10 +128,414 @@ export class FTPClient {
   }
 
   /**
-   * Check if a category requires a year input for searching.
+   * Check if a category offers the (optional) year input.
+   * A year narrows the search to year folders and ranks matching titles first.
    */
-  static categoryNeedsYear(category: Category): boolean {
-    return category.type === 'movie_with_year' || category.type === 'movie_merged';
+  static categorySupportsYear(category: Category): boolean {
+    return category.type === 'movie_with_year' || category.type === 'movie_merged' || category.type === 'all';
+  }
+
+  /**
+   * The folders a category searches. Explicit `searchScopes` win; otherwise the
+   * scopes come from the same config the folder-listing search uses.
+   */
+  static getSearchScopes(category: Category): SearchScope[] {
+    if (category.searchScopes?.length) return category.searchScopes;
+    if (category.mergedSources?.length) {
+      return category.mergedSources.map(source => ({
+        server: source.server,
+        path: source.path,
+        yearFormat: source.yearFormat,
+        label: source.label,
+      }));
+    }
+    return [{
+      server: category.server,
+      path: category.path,
+      yearFormat: category.type === 'movie_with_year' ? category.yearFormat : undefined,
+      labelFromSubfolder: category.type === 'movie_foreign',
+    }];
+  }
+
+  /**
+   * Turn the user's query into an h5ai search pattern.
+   *
+   * h5ai treats the pattern as a regex, so the query is reduced to letters and
+   * digits and an optional separator is allowed between every character:
+   * "spiderman" matches "Spider-Man", "xmen" matches "X-Men",
+   * "oceans eleven" matches "Ocean's Eleven".
+   * Returns null when the query is too short to search.
+   */
+  static buildSearchPattern(query: string, hasYear: boolean): string | null {
+    const words = query.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    const charCount = words.join('').length;
+    const minChars = hasYear ? SEARCH_CONFIG.MIN_QUERY_CHARS_WITH_YEAR : SEARCH_CONFIG.MIN_QUERY_CHARS;
+    if (charCount < minChars) return null;
+    return words
+      .map(word => Array.from(word).join('[^a-z0-9]?'))
+      .join('[^a-z0-9]*');
+  }
+
+  /**
+   * Search a category with the h5ai search API: one request per scope, in parallel.
+   * Each request searches every subfolder of its scope on the server.
+   *
+   * - A year narrows year-folder scopes; if that finds nothing, the whole scope is searched.
+   * - Unreachable servers are reported in `failedSources` instead of failing the search,
+   *   unless every scope fails.
+   * - If the servers don't support search, falls back to the folder-listing search.
+   */
+  async search(category: Category, query: string, year?: string, signal?: AbortSignal): Promise<SearchOutcome> {
+    const trimmedYear = year?.trim() || '';
+    if (trimmedYear && !YEAR_RE.test(trimmedYear)) {
+      throw new SearchInputError('Year must be 4 digits, e.g. 2024');
+    }
+
+    const pattern = FTPClient.buildSearchPattern(query, !!trimmedYear);
+    if (!pattern) {
+      throw new SearchInputError(
+        `Type at least ${SEARCH_CONFIG.MIN_QUERY_CHARS} letters or digits` +
+        (FTPClient.categorySupportsYear(category) ? ', or add a year for shorter titles' : ''),
+      );
+    }
+
+    const scopes = FTPClient.getSearchScopes(category);
+    let outcome = await this.searchScopes(category, scopes, pattern, query, trimmedYear, true, signal);
+
+    const narrowedByYear = !!trimmedYear && scopes.some(scope => scope.yearFormat && scope.yearFormat !== 'none');
+    if (narrowedByYear && outcome.items.length === 0 && !outcome.usedFallback) {
+      console.log('[Search] Nothing in year folders, searching whole category');
+      outcome = await this.searchScopes(category, scopes, pattern, query, trimmedYear, false, signal);
+    }
+
+    return outcome;
+  }
+
+  private async searchScopes(
+    category: Category,
+    scopes: SearchScope[],
+    pattern: string,
+    query: string,
+    year: string,
+    useYearFolders: boolean,
+    signal?: AbortSignal,
+  ): Promise<SearchOutcome> {
+    const settled = await Promise.allSettled(scopes.map(async scope => {
+      const searchPath = useYearFolders && year && scope.yearFormat && scope.yearFormat !== 'none'
+        ? `${scope.path.replace(/\/+$/, '')}/${FTPClient.getYearFolder(scope.yearFormat, year)}/`
+        : scope.path;
+      const hits = await this.searchScope(scope.server, searchPath, pattern, signal);
+      return FTPClient.collapseHits(hits, scope, category);
+    }));
+
+    if (signal?.aborted) {
+      throw FTPClient.abortError();
+    }
+
+    const items: FTPItem[] = [];
+    const failedSources: string[] = [];
+    const failures: any[] = [];
+    settled.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        items.push(...result.value);
+      } else {
+        const scope = scopes[index];
+        const host = scope.server.replace(/^https?:\/\//, '');
+        const what = scope.label ? `${category.name} ${scope.label}` : category.name;
+        failedSources.push(category.type === 'all' ? host : `${host} (${what})`);
+        failures.push(result.reason);
+      }
+    });
+
+    if (failures.length === scopes.length) {
+      if (failures.every(error => error instanceof SearchUnsupportedError)) {
+        console.warn('[Search] h5ai search unavailable, falling back to folder listing');
+        const legacy = await this.legacySearch(category, query, year);
+        return { ...legacy, truncated: false, usedFallback: true };
+      }
+      throw failures.find(error => !(error instanceof SearchUnsupportedError)) ?? failures[0];
+    }
+
+    const ranked = FTPClient.rankResults(items, query, year);
+    return {
+      items: ranked.slice(0, SEARCH_CONFIG.MAX_RESULTS),
+      failedSources,
+      truncated: ranked.length > SEARCH_CONFIG.MAX_RESULTS,
+      usedFallback: false,
+    };
+  }
+
+  /** POST one h5ai search request. */
+  private async searchScope(server: string, path: string, pattern: string, signal?: AbortSignal): Promise<SearchHit[]> {
+    const failedAt = deadServers.get(server);
+    if (failedAt && Date.now() - failedAt < SEARCH_CONFIG.DEAD_SERVER_TTL_MS) {
+      const error: any = new Error(`Network request failed (skipping ${server}, it failed moments ago)`);
+      error.endpoint = server;
+      throw error;
+    }
+
+    const segments = path.split('/').filter(Boolean);
+    const endpoint = `${server}/${FTPClient.encodeSegment(segments[0])}/`;
+    const href = `/${segments.map(segment => FTPClient.encodeSegment(segment)).join('/')}/`;
+
+    console.log('[Search] POST', endpoint, 'href:', decodeURIComponent(href));
+    let response: Response;
+    try {
+      response = await this.fetchWithTimeout(this.getProxiedUrl(endpoint), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get', search: { href, pattern, ignorecase: true } }),
+      }, SEARCH_CONFIG.REQUEST_TIMEOUT_MS, signal);
+    } catch (error: any) {
+      if (!signal?.aborted) {
+        deadServers.set(server, Date.now());
+      }
+      error.endpoint = endpoint;
+      throw error;
+    }
+    deadServers.delete(server);
+
+    if (!response.ok) {
+      // 404/405/403: the endpoint doesn't take h5ai API calls
+      if ([403, 404, 405].includes(response.status)) {
+        throw new SearchUnsupportedError(`Search not available on ${server} (HTTP ${response.status})`);
+      }
+      const error: any = new Error(`Search failed: HTTP ${response.status}`);
+      error.status = response.status;
+      error.endpoint = endpoint;
+      throw error;
+    }
+
+    let json: any;
+    try {
+      json = await response.json();
+    } catch {
+      throw new SearchUnsupportedError(`Search response from ${server} is not JSON`);
+    }
+    if (!Array.isArray(json?.search)) {
+      throw new SearchUnsupportedError(`Search disabled on ${server}`);
+    }
+    return json.search;
+  }
+
+  /**
+   * Reduce raw hits to one result per title.
+   *
+   * h5ai matches files as well as folders, so "breaking bad" returns the show folder
+   * plus every episode file. Each hit is replaced by its topmost matched ancestor
+   * folder; a file whose folders don't match is kept as a downloadable file.
+   */
+  static collapseHits(hits: SearchHit[], scope: SearchScope, category: Category): FTPItem[] {
+    const scopeHref = `/${scope.path.split('/').filter(Boolean).map(s => FTPClient.encodeSegment(s)).join('/')}/`;
+    const scopeDepth = scopeHref.split('/').filter(Boolean).length;
+    const exclude = new Set((category.excludeSubfolders || []).map(name => name.toLowerCase()));
+    const byHref = new Map<string, SearchHit>();
+    for (const hit of hits) {
+      if (typeof hit?.href === 'string') byHref.set(FTPClient.canonicalHref(hit.href), hit);
+    }
+
+    const results = new Map<string, FTPItem>();
+    for (const [href, hit] of byHref) {
+      const parts = href.split('/').filter(Boolean);
+      const isFolder = href.endsWith('/');
+
+      // Excluded subfolders (e.g. languages that have their own category)
+      const firstBelowScope = parts[scopeDepth] ? FTPClient.safeDecode(parts[scopeDepth]) : '';
+      if (exclude.has(firstBelowScope.toLowerCase())) continue;
+
+      let chosen: string | null = null;
+      const maxDepth = isFolder ? parts.length : parts.length - 1;
+      for (let depth = scopeDepth + 1; depth <= maxDepth; depth++) {
+        const ancestor = `/${parts.slice(0, depth).join('/')}/`;
+        if (byHref.has(ancestor)) {
+          chosen = ancestor;
+          break;
+        }
+      }
+      const key = chosen ?? href;
+      if (results.has(key)) continue;
+
+      const chosenHit = byHref.get(key)!;
+      const chosenIsFolder = key.endsWith('/');
+      const name = FTPClient.safeDecode(key.split('/').filter(Boolean).pop() || '');
+      const sizeBytes = typeof chosenHit.size === 'number' ? chosenHit.size : undefined;
+
+      results.set(key, {
+        name,
+        type: chosenIsFolder ? 'folder' : 'file',
+        path: key,
+        url: `${scope.server}${key}`,
+        sourceLabel: scope.label ?? (scope.labelFromSubfolder ? firstBelowScope || undefined : undefined),
+        sizeBytes: chosenIsFolder ? undefined : sizeBytes,
+        size: !chosenIsFolder && sizeBytes !== undefined ? FTPClient.formatBytes(sizeBytes) : undefined,
+        modified: chosenHit.time ? new Date(chosenHit.time) : undefined,
+      });
+    }
+
+    // Hidden or non-media files that happen to match aren't useful results
+    return [...results.values()].filter(item => item.type === 'folder' || FTPClient.isMediaFile(item.name));
+  }
+
+  /**
+   * Order results: year matches, then exact titles, then titles starting with the query
+   * (ignoring a leading "The"), then folders before loose files, then by name.
+   */
+  static rankResults(items: FTPItem[], query: string, year: string): FTPItem[] {
+    const compact = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const q = compact(query);
+    const score = (item: FTPItem) => {
+      const name = compact(item.name);
+      // Folder names look like "Title (2014) 720p [Dual Audio]"
+      const title = compact(item.name.split(' (')[0]);
+      let value = 0;
+      if (year && item.name.includes(year)) value += 8;
+      if (title === q || title === `the${q}`) value += 4;
+      if (name.startsWith(q) || name.startsWith(`the${q}`)) value += 2;
+      if (item.type === 'folder') value += 1;
+      return value;
+    };
+    return items
+      .map(item => ({ item, score: score(item) }))
+      .sort((a, b) =>
+        b.score - a.score ||
+        a.item.name.localeCompare(b.item.name) ||
+        (a.item.sourceLabel || '').localeCompare(b.item.sourceLabel || ''))
+      .map(entry => entry.item);
+  }
+
+  /**
+   * Search by listing the category's folders and filtering by name.
+   * Used only when the h5ai search API is unavailable; needs a year for year-folder categories.
+   */
+  private async legacySearch(category: Category, query: string, year: string): Promise<{ items: FTPItem[]; failedSources: string[] }> {
+    const filterByName = (items: FTPItem[]) => items.filter(item =>
+      item.type === 'folder' && item.name.toLowerCase().includes(query.toLowerCase().trim()));
+
+    switch (category.type) {
+      case 'all':
+        throw new SearchInputError('Search across all categories is not available on this server. Pick a category.');
+      case 'movie_merged':
+      case 'movie_with_year':
+        if (!year) {
+          throw new SearchInputError('Search is not available on this server right now. Add a year to browse that year folder.');
+        }
+        if (category.type === 'movie_merged') {
+          return this.searchMerged(category, query, year);
+        }
+        break;
+      case 'movie_foreign':
+        return { items: await this.searchForeign(category, query), failedSources: [] };
+    }
+
+    const url = FTPClient.buildSearchUrl(category, query, year || undefined);
+    return { items: filterByName(await this.fetchDirectory(url)), failedSources: [] };
+  }
+
+  /**
+   * Find the poster image in a title folder.
+   *
+   * DhakaFlix folders carry the poster as "a_AL_.jpg" (sometimes an extra "a_VL_.jpg",
+   * or an arbitrary .jpg on older uploads). The folder's HTML listing is a few KB,
+   * so it's the cheapest lookup. Results are cached; lookups run a few at a time.
+   */
+  static findPoster(folderUrl: string): Promise<string | null> {
+    const cached = posterCache.get(folderUrl);
+    if (cached) return cached;
+
+    const lookup = new Promise<string | null>((resolve) => {
+      posterQueue.push(async () => {
+        try {
+          const items = await new FTPClient().fetchDirectory(folderUrl, SEARCH_CONFIG.POSTER_TIMEOUT_MS);
+          resolve(FTPClient.pickPoster(items));
+        } catch {
+          posterCache.delete(folderUrl); // allow a retry later
+          resolve(null);
+        } finally {
+          activePosterFetches--;
+          FTPClient.drainPosterQueue();
+        }
+      });
+      FTPClient.drainPosterQueue();
+    });
+    posterCache.set(folderUrl, lookup);
+    return lookup;
+  }
+
+  private static drainPosterQueue() {
+    while (activePosterFetches < SEARCH_CONFIG.POSTER_CONCURRENCY && posterQueue.length > 0) {
+      activePosterFetches++;
+      posterQueue.shift()!();
+    }
+  }
+
+  /** Pick the poster from a folder listing: "a_AL_" first, then any image. */
+  static pickPoster(items: FTPItem[]): string | null {
+    const images = items.filter(item => item.type === 'file' && IMAGE_EXTENSION_RE.test(item.name));
+    const poster = images.find(item => /^a_AL_/i.test(item.name)) ?? images[0];
+    return poster?.url ?? null;
+  }
+
+  static formatBytes(bytes: number): string {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return `${value.toFixed(unit >= 3 ? 2 : unit === 0 ? 0 : 1)} ${units[unit]}`;
+  }
+
+  /** Normalise an h5ai href so the same path always has the same spelling. */
+  private static canonicalHref(href: string): string {
+    const isFolder = href.endsWith('/');
+    const parts = href.split('/').filter(Boolean).map(part => FTPClient.encodeSegment(FTPClient.safeDecode(part)));
+    return `/${parts.join('/')}${isFolder ? '/' : ''}`;
+  }
+
+  private static safeDecode(text: string): string {
+    try {
+      return decodeURIComponent(text);
+    } catch {
+      return text;
+    }
+  }
+
+  private static abortError(): Error {
+    const error = new Error('Search cancelled');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  /**
+   * fetch with a timeout that also follows an outer abort signal.
+   * A timeout surfaces as "Request timeout" so the error modal classifies it.
+   */
+  private async fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number, signal?: AbortSignal): Promise<Response> {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+    const onOuterAbort = () => controller.abort();
+    if (signal?.aborted) controller.abort();
+    signal?.addEventListener('abort', onOuterAbort);
+
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error: any) {
+      if (timedOut) {
+        const timeoutError: any = new Error(`Request timeout after ${timeoutMs / 1000}s`);
+        timeoutError.code = 'ETIMEDOUT';
+        throw timeoutError;
+      }
+      if (signal?.aborted) throw FTPClient.abortError();
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onOuterAbort);
+    }
   }
 
   /**
@@ -220,20 +658,12 @@ export class FTPClient {
    * Fetch a directory listing from a fully-formed URL.
    * Returns parsed FTPItem[] with full URLs for each item.
    */
-  async fetchDirectory(fullUrl: string): Promise<FTPItem[]> {
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), 30000); // 30 second timeout
-
+  async fetchDirectory(fullUrl: string, timeoutMs = 30000): Promise<FTPItem[]> {
     try {
       const proxiedUrl = this.getProxiedUrl(fullUrl);
       console.log('Fetching:', fullUrl);
 
-      const response = await fetch(proxiedUrl, {
-        method: 'GET',
-        signal: abortController.signal,
-      });
-
-      clearTimeout(timeoutId);
+      const response = await this.fetchWithTimeout(proxiedUrl, { method: 'GET' }, timeoutMs);
 
       if (!response.ok) {
         const error: any = new Error(`Failed to fetch directory: ${response.statusText}`);
@@ -248,7 +678,6 @@ export class FTPClient {
       console.log(`Parsed ${items.length} items from ${fullUrl}`);
       return items;
     } catch (error: any) {
-      clearTimeout(timeoutId);
       console.error('Error fetching directory:', error);
 
       // Attach endpoint information to the error
