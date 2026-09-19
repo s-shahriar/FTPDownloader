@@ -97,6 +97,7 @@
       ],
       "expo-font",
       "./android-network-security-config.js",
+      "./android-keep-notification-icons.js",
       "expo-sharing"
     ]
   }

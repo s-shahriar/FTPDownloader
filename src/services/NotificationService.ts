@@ -601,4 +601,46 @@ class NotificationService {
   }
 }
 
-export const notificationService = NotificationService.getInstance();
+/**
+ * Notifications must never break a download.
+ *
+ * Android rejects a notification outright when anything about it is invalid — a
+ * smallIcon stripped by resource shrinking, for example — and that exception used to
+ * propagate into the download flow and abort saving the finished file. Wrap every
+ * method so a notification failure is logged and ignored instead.
+ */
+function withSafeNotifications(service: NotificationService): NotificationService {
+  const proto = Object.getPrototypeOf(service);
+  const safe: any = Object.create(proto);
+
+  for (const key of Object.getOwnPropertyNames(proto)) {
+    const value = (service as any)[key];
+    if (key === 'constructor' || typeof value !== 'function') continue;
+
+    safe[key] = (...args: any[]) => {
+      try {
+        const result = value.apply(service, args);
+        if (result instanceof Promise) {
+          return result.catch((error: any) => {
+            console.warn(`[Notification] ${key} failed (ignored):`, error?.message ?? error);
+          });
+        }
+        return result;
+      } catch (error: any) {
+        console.warn(`[Notification] ${key} failed (ignored):`, error?.message ?? error);
+        return undefined;
+      }
+    };
+  }
+
+  // Callbacks the download manager assigns (onPauseAction etc.) live on the instance
+  return new Proxy(safe, {
+    get: (target, prop) => (prop in target ? target[prop as string] : (service as any)[prop]),
+    set: (_target, prop, value) => {
+      (service as any)[prop] = value;
+      return true;
+    },
+  }) as NotificationService;
+}
+
+export const notificationService = withSafeNotifications(NotificationService.getInstance());

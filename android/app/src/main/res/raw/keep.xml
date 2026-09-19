@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  These drawables are only referenced by name from JavaScript (notifee notification
+  icons in src/services/NotificationService.ts), so resource shrinking cannot see
+  them in use and strips them. A missing smallIcon makes Android reject the whole
+  notification with "Invalid notification (no valid small icon)", which broke saving
+  downloaded files in v1.7.3-v1.8.1. Keep them explicitly.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_check,@drawable/ic_error,@drawable/ic_download,@drawable/ic_pause,@drawable/ic_play,@drawable/ic_cancel,@drawable/ic_clear,@drawable/ic_refresh,@drawable/ic_schedule,@drawable/ic_open,@drawable/notification_icon,@drawable/progress_gradient,@drawable/progress_wavy" />
