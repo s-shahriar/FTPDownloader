@@ -47,3 +47,9 @@ ROUTE_ANALYSIS.md
 # build artifacts
 *.apk
 *.aab
+
+# EAS signing material pulled down for local release builds.
+# Losing these means no in-place updates ever again — back them up, never commit them.
+/credentials.json
+/credentials/
+keystore.properties

@@ -104,15 +104,30 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // The EAS-managed key, pulled down with `eas credentials`. Release
+        // builds must carry it: every published APK is signed with it, and
+        // Android refuses to update an app whose signature changed — a
+        // locally-signed build would force an uninstall and take the user's
+        // download history with it.
+        release {
+            def props = rootProject.file('../keystore.properties')
+            if (props.exists()) {
+                def creds = new Properties()
+                props.withInputStream { creds.load(it) }
+                storeFile rootProject.file(creds['storeFile'])
+                storePassword creds['storePassword']
+                keyAlias creds['keyAlias']
+                keyPassword creds['keyPassword']
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig rootProject.file('../keystore.properties').exists() ?
+                signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
