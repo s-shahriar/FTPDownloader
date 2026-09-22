@@ -59,7 +59,7 @@ export function SearchBar({
         )}
       </View>
       <TouchableOpacity style={styles.searchButton} onPress={handleSubmit}>
-        <MaterialIcons name="send" size={24} color={COLORS.surface} />
+        <MaterialIcons name="send" size={24} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   searchButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 12,
     width: 48,
     height: 48,

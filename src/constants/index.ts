@@ -19,7 +19,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/',
     server: 'http://172.16.50.7',
     icon: 'apps',
-    color: '#6F78D2',
+    color: '#357F6D',
     type: 'all',
     // Server 8 only hosts games and software, so it is left out
     searchScopes: [
@@ -35,7 +35,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/English Movies',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#CD6060',
+    color: '#B4543C',
     type: 'movie_merged',
     yearFormat: 'paren',
     mergedSources: [
@@ -59,7 +59,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/Hindi Movies',
     server: 'http://172.16.50.14',
     icon: 'movie-creation',
-    color: '#2E918A',
+    color: '#2F8078',
     type: 'movie_with_year',
     yearFormat: 'paren',
   },
@@ -69,7 +69,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/SOUTH INDIAN MOVIES/South Movies',
     server: 'http://172.16.50.14',
     icon: 'movie',
-    color: '#B8743C',
+    color: '#A9702F',
     type: 'movie_merged',
     yearFormat: 'bare',
     mergedSources: [
@@ -93,7 +93,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/Animation Movies',
     server: 'http://172.16.50.14',
     icon: 'animation',
-    color: '#8B70CD',
+    color: '#7B6098',
     type: 'movie_merged',
     yearFormat: 'paren',
     mergedSources: [
@@ -117,7 +117,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-12/TV-WEB-Series',
     server: 'http://172.16.50.12',
     icon: 'tv',
-    color: '#CB5C86',
+    color: '#A8546B',
     type: 'tv_series',
   },
   KOREAN_TV_SERIES: {
@@ -126,7 +126,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/KOREAN TV & WEB Series',
     server: 'http://172.16.50.14',
     icon: 'tv',
-    color: '#368AAA',
+    color: '#3A7B92',
     type: 'korean_tv_series',
   },
   KOREAN_MOVIES: {
@@ -135,7 +135,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Korean Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#CC5F63',
+    color: '#AB4F52',
     type: 'movie_flat',
   },
   JAPANESE_MOVIES: {
@@ -144,7 +144,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Japanese Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#C46A43',
+    color: '#B07430',
     type: 'movie_flat',
   },
   CHINESE_MOVIES: {
@@ -153,7 +153,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Chinese Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#458D7D',
+    color: '#45836F',
     type: 'movie_flat',
   },
   ANIME_CARTOON: {
@@ -162,7 +162,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-9/Anime & Cartoon TV Series',
     server: 'http://172.16.50.9',
     icon: 'tv',
-    color: '#CD6169',
+    color: '#96566E',
     type: 'anime_series',
   },
   FOREIGN_MOVIES: {
@@ -171,7 +171,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies',
     server: 'http://172.16.50.7',
     icon: 'public',
-    color: '#388D8C',
+    color: '#4A7F86',
     type: 'movie_foreign',
     excludeSubfolders: ['Chinese Language', 'Japanese Language', 'Korean Language'],
   },
@@ -261,6 +261,16 @@ export const COLORS = {
   success: '#4E8B62',
   warning: '#D99A3A',
   info: '#357F6D',
+
+  // Light fills. Every tint in the app comes from here — previously these were
+  // hand-written indigo rgba() left over from the dark scheme, which is why
+  // chips and badges read lavender on the cream ground.
+  tint: 'rgba(111,195,174,0.16)',        // subtle teal fill
+  tintStrong: 'rgba(111,195,174,0.26)',  // chip / badge fill
+  tintBorder: 'rgba(53,127,109,0.22)',   // hairline on a tint
+  sandTint: 'rgba(224,164,92,0.16)',
+  sandTintStrong: 'rgba(224,164,92,0.24)',
+  errorTint: 'rgba(197,83,63,0.10)',
 
   // Soft tints, replacing the old neon glows: on a light ground a glow reads
   // as grime, so these are used as gentle fills and shadows instead.

@@ -89,7 +89,7 @@ export function ResultItem({ item, onPress, onDownload, showPoster = false }: Re
             style={styles.downloadButton}
             onPress={() => onDownload(item)}
           >
-            <MaterialIcons name="download" size={22} color={COLORS.primary} />
+            <MaterialIcons name="download" size={22} color={COLORS.primaryStrong} />
           </TouchableOpacity>
         </View>
       )}
@@ -112,23 +112,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 14px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 2px 14px rgba(38,37,35,0.10)' as any },
       android: { elevation: 2 },
     }),
   },
   iconContainer: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   poster: { width: 44, height: 66, borderRadius: 8, backgroundColor: COLORS.card2 },
-  iconFolder: { backgroundColor: 'rgba(232,160,32,0.16)' },
-  iconFile: { backgroundColor: 'rgba(129,140,248,0.16)' },
+  iconFolder: { backgroundColor: COLORS.sandTintStrong },
+  iconFile: { backgroundColor: COLORS.tintStrong },
   infoContainer: { flex: 1, marginLeft: 12 },
   nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   name: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 3, lineHeight: 19, flex: 1 },
   qualityBadge: {
-    backgroundColor: 'rgba(129,140,248,0.16)',
+    backgroundColor: COLORS.tintStrong,
     borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2,
   },
   qualityText: {
-    fontSize: 9, fontWeight: '700', color: COLORS.primary, letterSpacing: 0.5,
+    fontSize: 9, fontWeight: '700', color: COLORS.primaryStrong, letterSpacing: 0.5,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   meta: { fontSize: 11, color: COLORS.textSecondary, marginTop: 2 },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   downloadButton: {
     width: 38, height: 38, borderRadius: 11,
-    backgroundColor: 'rgba(129,140,248,0.16)',
+    backgroundColor: COLORS.tintStrong,
     alignItems: 'center', justifyContent: 'center',
   },
 });

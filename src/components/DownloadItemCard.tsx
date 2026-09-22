@@ -188,7 +188,7 @@ export const DownloadItemCard = React.memo(function DownloadItemCard({
               style={styles.actionButton}
               onPress={() => onOpen(download.id)}
             >
-              <MaterialIcons name="play-circle-outline" size={20} color={COLORS.primary} />
+              <MaterialIcons name="play-circle-outline" size={20} color={COLORS.primaryStrong} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginVertical: 4,
     borderWidth: 1, borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 14px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 2px 14px rgba(38,37,35,0.10)' as any },
       android: { elevation: 2 },
     }),
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   progressBarFill: { height: '100%', borderRadius: 3 },
   bytesContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   bytesText: { fontSize: 10, color: COLORS.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  speedText: { fontSize: 10, fontWeight: '700', color: COLORS.primary, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  speedText: { fontSize: 10, fontWeight: '700', color: COLORS.primaryStrong, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   errorText: { fontSize: 11, color: COLORS.error, marginTop: 8 },
   actionsContainer: {
     flexDirection: 'row', justifyContent: 'flex-end',

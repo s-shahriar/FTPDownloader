@@ -160,7 +160,7 @@ export function SAFOnboardingModal({
             <>
               {/* Icon */}
               <View style={styles.iconContainer}>
-                <MaterialIcons name="folder-open" size={64} color={COLORS.primary} />
+                <MaterialIcons name="folder-open" size={64} color={COLORS.primaryStrong} />
               </View>
 
               {/* Title */}
@@ -229,7 +229,7 @@ export function SAFOnboardingModal({
 
               {/* Folder Path */}
               <View style={styles.folderPathContainer}>
-                <MaterialIcons name="folder" size={16} color={COLORS.primary} />
+                <MaterialIcons name="folder" size={16} color={COLORS.primaryStrong} />
                 <Text style={styles.folderPathText}>
                   {safPermissionService.getFolderDisplayName()}
                 </Text>
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(129,140,248,0.1)',
+    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,

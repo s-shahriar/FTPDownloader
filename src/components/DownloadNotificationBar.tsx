@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 20px rgba(129,140,248,0.4)' as any,
+        boxShadow: '0 4px 20px rgba(53,127,109,0.30)' as any,
       },
       android: { elevation: 8 },
     }),

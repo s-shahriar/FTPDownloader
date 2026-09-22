@@ -105,7 +105,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.aiIconWrap}>
-                <MaterialIcons name="auto-awesome" size={18} color={COLORS.primary} />
+                <MaterialIcons name="auto-awesome" size={18} color={COLORS.primaryStrong} />
               </View>
               <View>
                 <Text style={styles.headerTitle}>AI Movie Finder</Text>
@@ -147,7 +147,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
             {/* Loading */}
             {loading && (
               <View style={styles.centerState}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color={COLORS.primaryStrong} />
                 <Text style={styles.stateText}>Asking Gemini…</Text>
               </View>
             )}
@@ -163,7 +163,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
                   style={styles.retryBtn}
                   onPress={() => runSearch(query, model)}
                 >
-                  <MaterialIcons name="refresh" size={15} color={COLORS.primary} />
+                  <MaterialIcons name="refresh" size={15} color={COLORS.primaryStrong} />
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               </View>
@@ -180,7 +180,7 @@ export function AISearchModal({ visible, query, onClose, onSelect }: Props) {
                     style={styles.retryIconBtn}
                     onPress={() => runSearch(query, model)}
                   >
-                    <MaterialIcons name="refresh" size={16} color={COLORS.primary} />
+                    <MaterialIcons name="refresh" size={16} color={COLORS.primaryStrong} />
                   </TouchableOpacity>
                 </View>
                 {results.map((match, i) => {
@@ -305,9 +305,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 11,
-    backgroundColor: 'rgba(129,140,248,0.1)',
+    backgroundColor: COLORS.tint,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.2)',
+    borderColor: COLORS.tintBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -405,9 +405,9 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: 'rgba(129,140,248,0.1)',
+    backgroundColor: COLORS.tint,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.2)',
+    borderColor: COLORS.tintBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,77,106,0.08)',
+    backgroundColor: COLORS.errorTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   },
   retryText: {
     fontSize: 13,
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
     fontWeight: '600',
   },
 

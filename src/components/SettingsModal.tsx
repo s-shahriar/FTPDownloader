@@ -236,7 +236,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             {/* Download Location Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <MaterialIcons name="folder" size={16} color={COLORS.primary} />
+                <MaterialIcons name="folder" size={16} color={COLORS.primaryStrong} />
                 <Text style={styles.sectionTitle}>Download Location</Text>
                 {Platform.OS === 'android' && isSAFConfigured && (
                   <View style={styles.statusBadge}>
@@ -296,7 +296,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                     style={styles.pickerBtn}
                     onPress={handlePickDirectory}
                   >
-                    <MaterialIcons name="sd-storage" size={16} color={COLORS.primary} />
+                    <MaterialIcons name="sd-storage" size={16} color={COLORS.primaryStrong} />
                     <Text style={styles.pickerBtnText}>
                       {isSAFConfigured ? 'Change Folder' : 'Choose Folder'}
                     </Text>
@@ -334,7 +334,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             {/* AI Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <MaterialIcons name="vpn-key" size={16} color={COLORS.primary} />
+                <MaterialIcons name="vpn-key" size={16} color={COLORS.primaryStrong} />
                 <Text style={styles.sectionTitle}>API KEY</Text>
               </View>
 
@@ -358,7 +358,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
             {/* Updates Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <MaterialIcons name="system-update" size={16} color={COLORS.primary} />
+                <MaterialIcons name="system-update" size={16} color={COLORS.primaryStrong} />
                 <Text style={styles.sectionTitle}>APP UPDATES</Text>
               </View>
 
@@ -371,7 +371,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
                 onPress={handleCheckUpdate}
                 disabled={isCheckingUpdate}
               >
-                <MaterialIcons name="cloud-download" size={16} color={COLORS.primary} />
+                <MaterialIcons name="cloud-download" size={16} color={COLORS.primaryStrong} />
                 <Text style={styles.updateBtnText}>
                   {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
                 </Text>
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: 'rgba(0,200,160,0.1)',
+    backgroundColor: COLORS.tint,
   },
   statusBadgeText: {
     fontSize: 10,
@@ -507,14 +507,14 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(129,140,248,0.08)',
+    backgroundColor: COLORS.tint,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.2)',
+    borderColor: COLORS.tintBorder,
   },
   pickerBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
   },
   resetBtn: {
     flexDirection: 'row',
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 20px rgba(129,140,248,0.35)' as any,
+        boxShadow: '0 4px 20px rgba(53,127,109,0.28)' as any,
       },
       android: { elevation: 4 },
     }),
@@ -614,15 +614,15 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(129,140,248,0.08)',
+    backgroundColor: COLORS.tint,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.2)',
+    borderColor: COLORS.tintBorder,
     marginBottom: 8,
   },
   updateBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
   },
   versionText: {
     fontSize: 10,

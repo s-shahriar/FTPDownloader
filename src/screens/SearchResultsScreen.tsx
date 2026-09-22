@@ -206,7 +206,7 @@ export function SearchResultsScreen({ route, navigation }: any) {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.primaryStrong} />
           <Text style={styles.loadingText}>Loading folder contents...</Text>
         </View>
       ) : (
@@ -226,7 +226,7 @@ export function SearchResultsScreen({ route, navigation }: any) {
           style={styles.downloadsCta}
           onPress={() => navigation.navigate('Downloads')}
         >
-          <MaterialIcons name="download" size={20} color="#1a0e00" />
+          <MaterialIcons name="download" size={20} color={COLORS.onAccent} />
           <Text style={styles.downloadsCtaText}>My Downloads</Text>
         </TouchableOpacity>
       </View>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     gap: 14,
     ...Platform.select({
-      web: { boxShadow: '0 2px 20px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 2px 20px rgba(38,37,35,0.10)' as any },
       android: { elevation: 3 },
     }),
   },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
     ...Platform.select({
-      web: { boxShadow: '0 -4px 24px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 -4px 24px rgba(38,37,35,0.10)' as any },
     }),
   },
   downloadsCta: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(232,160,32,0.46)' as any },
+      web: { boxShadow: '0 4px 26px rgba(196,136,63,0.36)' as any },
       android: { elevation: 6 },
     }),
   },
@@ -370,12 +370,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.22)',
+    borderColor: COLORS.tintBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(129,140,248,0.14)' as any },
+      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.12)' as any },
     }),
   },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 8 },

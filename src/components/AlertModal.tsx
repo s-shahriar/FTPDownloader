@@ -129,16 +129,16 @@ export function AlertHost() {
     if (titleLower.includes('success') || titleLower.includes('saved') || titleLower.includes('reset'))
       return { name: 'check-circle-outline', color: COLORS.success };
     if (titleLower.includes('select') || titleLower.includes('enter') || titleLower.includes('search'))
-      return { name: 'info-outline', color: COLORS.primary };
+      return { name: 'info-outline', color: COLORS.primaryStrong };
     if (titleLower.includes('no result'))
       return { name: 'search-off', color: COLORS.textSecondary };
     if (titleLower.includes('download'))
-      return { name: 'downloading', color: COLORS.primary };
+      return { name: 'downloading', color: COLORS.primaryStrong };
     if (titleLower.includes('permission') || titleLower.includes('storage'))
       return { name: 'security', color: COLORS.warning };
     if (titleLower.includes('not supported'))
       return { name: 'block', color: COLORS.textSecondary };
-    return { name: 'info-outline', color: COLORS.primary };
+    return { name: 'info-outline', color: COLORS.primaryStrong };
   };
 
   const icon = getIcon();
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 16px rgba(129,140,248,0.3)' as any,
+        boxShadow: '0 4px 16px rgba(53,127,109,0.26)' as any,
       },
       android: { elevation: 3 },
     }),
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
     ...Platform.select({
       web: {
-        boxShadow: '0 4px 16px rgba(255,77,106,0.3)' as any,
+        boxShadow: '0 4px 16px rgba(197,83,63,0.26)' as any,
       },
     }),
   },

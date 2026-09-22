@@ -153,7 +153,7 @@ export function SRTConverterScreen({ navigation }: Props) {
             disabled={processing}
           >
             <View style={styles.pickerContent}>
-              <MaterialIcons name="smart-toy" size={18} color={COLORS.primary} />
+              <MaterialIcons name="smart-toy" size={18} color={COLORS.primaryStrong} />
               <View style={styles.pickerTextWrap}>
                 <Text style={styles.pickerLabel}>{model.label}</Text>
                 <Text style={styles.pickerSub} numberOfLines={1}>{model.info}</Text>
@@ -209,7 +209,7 @@ export function SRTConverterScreen({ navigation }: Props) {
             disabled={processing}
           >
             <View style={styles.pickerContent}>
-              <MaterialIcons name="layers" size={18} color={COLORS.primary} />
+              <MaterialIcons name="layers" size={18} color={COLORS.primaryStrong} />
               <View style={styles.pickerTextWrap}>
                 <Text style={styles.pickerLabel}>
                   {SRT_BATCH_SIZE_OPTIONS.find(o => o.value === batchSize)?.label ?? `${batchSize} lines`}
@@ -287,13 +287,13 @@ export function SRTConverterScreen({ navigation }: Props) {
                   onPress={() => handleSelectModel(m)}
                 >
                   <View style={styles.modalOptionContent}>
-                    <Text style={[styles.modalOptionLabel, m.id === model.id && { color: COLORS.primary }]}>
+                    <Text style={[styles.modalOptionLabel, m.id === model.id && { color: COLORS.primaryStrong }]}>
                       {m.label}
                     </Text>
                     <Text style={styles.modalOptionInfo}>{m.info}</Text>
                   </View>
                   {m.id === model.id && (
-                    <MaterialIcons name="check" size={20} color={COLORS.primary} />
+                    <MaterialIcons name="check" size={20} color={COLORS.primaryStrong} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -324,13 +324,13 @@ export function SRTConverterScreen({ navigation }: Props) {
                   onPress={() => handleSelectBatchSize(opt)}
                 >
                   <View style={styles.modalOptionContent}>
-                    <Text style={[styles.modalOptionLabel, opt.value === batchSize && { color: COLORS.primary }]}>
+                    <Text style={[styles.modalOptionLabel, opt.value === batchSize && { color: COLORS.primaryStrong }]}>
                       {opt.label}
                     </Text>
                     <Text style={styles.modalOptionInfo}>{opt.description}</Text>
                   </View>
                   {opt.value === batchSize && (
-                    <MaterialIcons name="check" size={20} color={COLORS.primary} />
+                    <MaterialIcons name="check" size={20} color={COLORS.primaryStrong} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
     marginBottom: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    backgroundColor: COLORS.sandTint,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.warning,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   filePicker: {
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: COLORS.primary + '55',
+    borderColor: COLORS.primaryStrong + '66',
     borderStyle: 'dashed',
     paddingVertical: 22,
     paddingHorizontal: 16,
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   fileInfoName: {
     fontSize: 12,
     flex: 1,
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
   },
 
   // Process button
@@ -552,21 +552,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 14,
     paddingVertical: 16,
     ...Platform.select({
       android: { elevation: 4 },
-      web: { boxShadow: '0 4px 20px rgba(129,140,248,0.35)' as any },
+      web: { boxShadow: '0 4px 20px rgba(53,127,109,0.28)' as any },
     }),
   },
   processBtnDisabled: {
-    opacity: 0.4,
+    opacity: 0.55,
   },
   processBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: COLORS.onPrimary,
+    color: '#fff',
     letterSpacing: 0.3,
   },
   cancelBtn: {

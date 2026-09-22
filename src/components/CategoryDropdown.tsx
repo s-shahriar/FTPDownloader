@@ -82,7 +82,7 @@ export function CategoryDropdown({
           <MaterialIcons
             name={item.icon as any}
             size={22}
-            color={isSelected ? COLORS.primary : item.color}
+            color={item.color}
           />
         </View>
         <Text
@@ -116,7 +116,7 @@ export function CategoryDropdown({
               />
             </View>
           ) : (
-            <View style={[styles.catIcon, { backgroundColor: 'rgba(232,160,32,0.12)' }]}>
+            <View style={[styles.catIcon, { backgroundColor: COLORS.sandTint }]}>
               <MaterialIcons name="category" size={18} color={COLORS.accent} />
             </View>
           )}
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 14px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 2px 14px rgba(38,37,35,0.10)' as any },
       android: { elevation: 2 },
     }),
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject },
   handleBar: {
     width: 40, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(129,140,248,0.25)',
+    backgroundColor: COLORS.textDim,
     alignSelf: 'center', marginTop: 12, marginBottom: 16,
   },
   modalContainer: {
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     maxHeight: '70%', paddingBottom: 24,
     borderTopWidth: 1, borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 -12px 50px rgba(99,102,241,0.20)' as any },
+      web: { boxShadow: '0 -12px 50px rgba(38,37,35,0.14)' as any },
       android: { elevation: 10 },
     }),
   },
@@ -231,11 +231,11 @@ const styles = StyleSheet.create({
   },
   gridItemSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(129,140,248,0.10)',
+    backgroundColor: COLORS.tint,
   },
   gridIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   gridText: { fontSize: 12, color: COLORS.text, textAlign: 'center', fontWeight: '500', lineHeight: 17 },
-  gridTextSelected: { color: COLORS.primary, fontWeight: '700' },
+  gridTextSelected: { color: COLORS.primaryStrong, fontWeight: '700' },
   checkMark: {
     position: 'absolute', top: 8, right: 8,
     width: 20, height: 20, borderRadius: 10,

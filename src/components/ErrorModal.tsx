@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   codeText: {
     fontSize: 12,
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     lineHeight: 18,
   },

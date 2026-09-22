@@ -73,7 +73,7 @@ export function ToastHost() {
       pointerEvents="box-none"
     >
       <View style={styles.toast}>
-        <MaterialIcons name="downloading" size={18} color={COLORS.primary} />
+        <MaterialIcons name="downloading" size={18} color={COLORS.primaryStrong} />
         <Text style={styles.text} numberOfLines={2}>
           {toast.text}
         </Text>
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: COLORS.card2,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.35)',
+    borderColor: COLORS.tintBorder,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(129,140,248,0.18)',
+    backgroundColor: COLORS.tintStrong,
   },
   actionText: {
     fontSize: 12,
     fontWeight: '700',
-    color: COLORS.primary,
+    color: COLORS.primaryStrong,
   },
 });

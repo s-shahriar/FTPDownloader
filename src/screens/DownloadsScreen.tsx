@@ -114,7 +114,7 @@ export function DownloadsScreen({ navigation }: any) {
           <MaterialIcons
             name={checked ? "check-box" : "check-box-outline-blank"}
             size={24}
-            color={COLORS.primary}
+            color={COLORS.primaryStrong}
           />
           <Text style={styles.checkboxLabel}>Also delete file from device</Text>
         </TouchableOpacity>
@@ -158,7 +158,7 @@ export function DownloadsScreen({ navigation }: any) {
           <MaterialIcons
             name={checked ? "check-box" : "check-box-outline-blank"}
             size={24}
-            color={COLORS.primary}
+            color={COLORS.primaryStrong}
           />
           <Text style={styles.checkboxLabel}>Also delete files from device</Text>
         </TouchableOpacity>
@@ -262,7 +262,7 @@ export function DownloadsScreen({ navigation }: any) {
         <View style={styles.emptyCircle} />
         <View style={styles.emptyCircle2} />
         <View style={styles.emptyIconBg}>
-          <MaterialIcons name="cloud-download" size={28} color={COLORS.primary} />
+          <MaterialIcons name="cloud-download" size={28} color={COLORS.primaryStrong} />
         </View>
       </View>
 
@@ -275,14 +275,14 @@ export function DownloadsScreen({ navigation }: any) {
         style={styles.browseBtn}
         onPress={() => navigation.navigate('Home')}
       >
-        <MaterialIcons name="search" size={16} color={COLORS.primary} />
+        <MaterialIcons name="search" size={16} color={COLORS.primaryStrong} />
         <Text style={styles.browseBtnText}>Browse Media</Text>
       </TouchableOpacity>
 
       {/* Tips */}
       <View style={styles.tipsContainer}>
         <View style={styles.tipCard}>
-          <View style={[styles.tipIcon, { backgroundColor: 'rgba(232,160,32,0.1)' }]}>
+          <View style={[styles.tipIcon, { backgroundColor: COLORS.sandTint }]}>
             <MaterialIcons name="flash-on" size={16} color={COLORS.accent} />
           </View>
           <Text style={styles.tipText}>
@@ -290,7 +290,7 @@ export function DownloadsScreen({ navigation }: any) {
           </Text>
         </View>
         <View style={styles.tipCard}>
-          <View style={[styles.tipIcon, { backgroundColor: 'rgba(0,200,160,0.1)' }]}>
+          <View style={[styles.tipIcon, { backgroundColor: COLORS.tint }]}>
             <MaterialIcons name="security" size={16} color={COLORS.success} />
           </View>
           <Text style={styles.tipText}>
@@ -370,7 +370,7 @@ export function DownloadsScreen({ navigation }: any) {
       {/* Queue status bar */}
       {downloads.length > 0 && (downloadingCount > 0 || queuedCount > 0) && (
         <View style={styles.queueBar}>
-          <MaterialIcons name="sync" size={12} color={COLORS.primary} />
+          <MaterialIcons name="sync" size={12} color={COLORS.primaryStrong} />
           <Text style={styles.queueText}>
             {downloadingCount} active{queuedCount > 0 ? ` · ${queuedCount} queued` : ''}
           </Text>
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 20px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 2px 20px rgba(38,37,35,0.10)' as any },
       android: { elevation: 3 },
     }),
   },
@@ -455,26 +455,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card2,
     borderWidth: 1, borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 12px rgba(99,102,241,0.20)' as any },
+      web: { boxShadow: '0 2px 12px rgba(38,37,35,0.14)' as any },
       android: { elevation: 2 },
     }),
   },
   tabText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, letterSpacing: 0.2 },
-  tabTextActive: { color: COLORS.primary, fontWeight: '700' },
+  tabTextActive: { color: COLORS.primaryStrong, fontWeight: '700' },
   tabBadge: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },
-  tabBadgeActive: { backgroundColor: 'rgba(129,140,248,0.16)' },
+  tabBadgeActive: { backgroundColor: COLORS.tintStrong },
   tabBadgeText: { fontSize: 9, fontWeight: '600', color: COLORS.textDim, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  tabBadgeTextActive: { color: COLORS.primary },
+  tabBadgeTextActive: { color: COLORS.primaryStrong },
 
   // ── Queue status ──
   queueBar: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     marginHorizontal: 16, marginBottom: 8,
     paddingVertical: 6, paddingHorizontal: 12,
-    backgroundColor: 'rgba(129,140,248,0.08)',
-    borderRadius: 8, borderWidth: 1, borderColor: 'rgba(129,140,248,0.18)',
+    backgroundColor: COLORS.tint,
+    borderRadius: 8, borderWidth: 1, borderColor: COLORS.tintStrong,
   },
-  queueText: { fontSize: 11, color: COLORS.primary, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  queueText: { fontSize: 11, color: COLORS.primaryStrong, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
   // ── List ──
   list: { flex: 1, ...Platform.select({ web: { overflowY: 'auto' as any } }) },
@@ -488,21 +488,21 @@ const styles = StyleSheet.create({
   emptyVisual: { width: 120, height: 120, marginBottom: 28, alignItems: 'center', justifyContent: 'center' },
   emptyCircle: {
     position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(129,140,248,0.07)',
-    borderWidth: 1, borderColor: 'rgba(129,140,248,0.14)',
+    backgroundColor: COLORS.tint,
+    borderWidth: 1, borderColor: COLORS.tintBorder,
   },
   emptyCircle2: {
     position: 'absolute', width: 88, height: 88, borderRadius: 44,
-    backgroundColor: 'rgba(129,140,248,0.05)',
-    borderWidth: 1, borderColor: 'rgba(129,140,248,0.10)',
+    backgroundColor: COLORS.tint,
+    borderWidth: 1, borderColor: COLORS.tint,
   },
   emptyIconBg: {
     width: 60, height: 60, borderRadius: 18,
     backgroundColor: COLORS.card,
-    borderWidth: 1, borderColor: 'rgba(129,140,248,0.24)',
+    borderWidth: 1, borderColor: COLORS.tintBorder,
     alignItems: 'center', justifyContent: 'center',
     ...Platform.select({
-      web: { boxShadow: '0 8px 32px rgba(129,140,248,0.16)' as any },
+      web: { boxShadow: '0 8px 32px rgba(38,37,35,0.12)' as any },
       android: { elevation: 3 },
     }),
   },
@@ -511,13 +511,13 @@ const styles = StyleSheet.create({
   browseBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: COLORS.card,
-    borderWidth: 1, borderColor: 'rgba(129,140,248,0.30)',
+    borderWidth: 1, borderColor: COLORS.tintBorder,
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(129,140,248,0.14)' as any },
+      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.12)' as any },
     }),
   },
-  browseBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  browseBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.primaryStrong },
 
   // ── Tips ──
   tipsContainer: { width: '100%', marginTop: 32, gap: 8 },

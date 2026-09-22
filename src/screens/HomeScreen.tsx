@@ -279,7 +279,7 @@ export function HomeScreen({ navigation }: any) {
                   style={styles.historyBtnInline}
                   onPress={() => setHistoryModalVisible(true)}
                 >
-                  <MaterialIcons name="history" size={20} color="#fff" />
+                  <MaterialIcons name="history" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -292,7 +292,7 @@ export function HomeScreen({ navigation }: any) {
                   setAiModalVisible(true);
                 }}
               >
-                <MaterialIcons name="auto-awesome" size={20} color="#fff" />
+                <MaterialIcons name="auto-awesome" size={20} color={COLORS.primaryStrong} />
               </TouchableOpacity>
             </View>
 
@@ -374,7 +374,7 @@ export function HomeScreen({ navigation }: any) {
           style={styles.downloadsCta}
           onPress={() => navigation.navigate('Downloads')}
         >
-          <MaterialIcons name="download" size={20} color="#1a0e00" />
+          <MaterialIcons name="download" size={20} color={COLORS.onAccent} />
           <Text style={styles.downloadsCtaText}>My Downloads</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 4px 30px rgba(99,102,241,0.14)' as any },
+      web: { boxShadow: '0 4px 30px rgba(38,37,35,0.10)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -489,9 +489,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
-    backgroundColor: 'rgba(129,140,248,0.10)',
+    backgroundColor: COLORS.tint,
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.26)',
+    borderColor: COLORS.tintBorder,
     borderRadius: 40,
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(99,102,241,0.22)' as any },
+      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.14)' as any },
       android: { elevation: 3 },
     }),
   },
@@ -561,12 +561,14 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 12,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.tint,
+    borderWidth: 1,
+    borderColor: COLORS.tintBorder,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(167,139,250,0.42)' as any },
+      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -582,7 +584,7 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: COLORS.primary,
     ...Platform.select({
-      web: { boxShadow: '0 0 0 3px rgba(129,140,248,0.18)' as any },
+      web: { boxShadow: '0 0 0 3px rgba(53,127,109,0.18)' as any },
     }),
   },
   inputIcon: { marginRight: 10 },
@@ -605,7 +607,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   searchBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 12,
     width: 52,
     height: 52,
@@ -613,7 +615,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(129,140,248,0.45)' as any },
+      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
       android: { elevation: 4 },
     }),
   },
@@ -621,19 +623,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(129,140,248,0.45)' as any },
+      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
       android: { elevation: 4 },
     }),
   },
   searchFullButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.onPrimary,
+    color: '#fff',
     letterSpacing: 0.3,
   },
 
@@ -662,7 +664,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
     ...Platform.select({
-      web: { boxShadow: '0 -4px 24px rgba(99,102,241,0.12)' as any },
+      web: { boxShadow: '0 -4px 24px rgba(38,37,35,0.10)' as any },
     }),
   },
   downloadsCta: {
@@ -675,7 +677,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(232,160,32,0.46)' as any },
+      web: { boxShadow: '0 4px 26px rgba(196,136,63,0.36)' as any },
       android: { elevation: 6 },
     }),
   },
@@ -686,15 +688,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primaryStrong,
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(167,139,250,0.42)' as any },
+      web: { boxShadow: '0 4px 26px rgba(53,127,109,0.30)' as any },
       android: { elevation: 6 },
     }),
   },
-  srtCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onPrimary, letterSpacing: 0.3 },
+  srtCtaText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
 
   // ── History Modal ──
   modalOverlay: {
@@ -713,7 +715,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 -12px 50px rgba(99,102,241,0.18)' as any },
+      web: { boxShadow: '0 -12px 50px rgba(38,37,35,0.14)' as any },
     }),
   },
   historyModalHeader: {
