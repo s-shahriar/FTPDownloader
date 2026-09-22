@@ -2,7 +2,7 @@
   "expo": {
     "name": "FTPDownloader",
     "slug": "FTPDownloader",
-    "version": "1.8.2",
+    "version": "1.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.ftpdownloader.app",
-      "versionCode": 13,
+      "versionCode": 14,
       "usesCleartextTraffic": true,
       "splash": {
         "image": "./assets/transparent-splash.png",

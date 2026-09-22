@@ -36,7 +36,10 @@ type AppAction =
 const initialState: AppState = {
   downloads: [],
   searchHistory: [],
-  selectedCategory: null,
+  // Start on every category rather than an empty "Select Category" prompt:
+  // searching across all of them is the common case, and the placeholder made
+  // the app look like it needed setting up before it would do anything.
+  selectedCategory: CATEGORIES.ALL,
   searchQuery: '',
   isLoading: false,
   error: null,
