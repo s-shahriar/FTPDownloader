@@ -246,12 +246,14 @@ export const COLORS = {
   onPrimary: '#F4FAF8',      // deep teal is dark enough to carry light text
   onAccent: '#2A1C0C',
 
-  // Backgrounds — cool porcelain, not cream
-  background: '#E8EDEC',
-  surface: '#E8EDEC',
-  card: '#F8FBF9',          // near-white, faintly cool
-  card2: '#F1F5F3',
-  inputBg: '#F8FBF9',
+  // Backgrounds — sage paper. Deliberately a different hue *and* a different
+  // lightness from Magpie's cream (#F4F1EB, hue 40°, 94% light): this is hue
+  // 152° at 87%, so the two never look like the same screen recoloured.
+  background: '#D6E3DD',
+  surface: '#D6E3DD',
+  card: '#F2F8F5',          // near-white, so cards lift off the ground
+  card2: '#E6EFEA',
+  inputBg: '#F2F8F5',
 
   // Off by default: the card already separates itself from the ground.
   border: 'transparent',
@@ -259,9 +261,9 @@ export const COLORS = {
   divider: 'rgba(30,42,40,0.10)',
 
   // Text — cool ink
-  text: '#1E2A28',
-  textSecondary: '#5C6B68',
-  textDim: '#94A3A0',
+  text: '#16231F',
+  textSecondary: '#4E5F5A',
+  textDim: '#82918C',
 
   // Status
   error: '#C0533F',
