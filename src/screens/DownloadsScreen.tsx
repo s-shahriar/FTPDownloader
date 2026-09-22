@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 20px rgba(38,37,35,0.10)' as any },
-      android: { elevation: 3 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   backBtn: {
@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card2,
     borderWidth: 1, borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 12px rgba(38,37,35,0.14)' as any },
-      android: { elevation: 2 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   tabText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, letterSpacing: 0.2 },
@@ -502,8 +502,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.tintBorder,
     alignItems: 'center', justifyContent: 'center',
     ...Platform.select({
-      web: { boxShadow: '0 8px 32px rgba(38,37,35,0.12)' as any },
-      android: { elevation: 3 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   emptyHeading: { fontSize: 22, fontWeight: '900', color: COLORS.text, letterSpacing: 1.5, marginBottom: 8 },
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.tintBorder,
     borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.12)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   browseBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.primaryStrong },

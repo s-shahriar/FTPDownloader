@@ -268,8 +268,8 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     gap: 14,
     ...Platform.select({
-      web: { boxShadow: '0 2px 20px rgba(38,37,35,0.10)' as any },
-      android: { elevation: 3 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   backBtn: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
     ...Platform.select({
-      web: { boxShadow: '0 -4px 24px rgba(38,37,35,0.10)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   downloadsCta: {
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(196,136,63,0.36)' as any },
-      android: { elevation: 6 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   downloadsCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onAccent, letterSpacing: 0.3 },
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.12)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginBottom: 8 },

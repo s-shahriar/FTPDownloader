@@ -556,8 +556,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
     ...Platform.select({
-      android: { elevation: 4 },
-      web: { boxShadow: '0 4px 20px rgba(53,127,109,0.28)' as any },
+      android: { elevation: 0 },
+      web: { boxShadow: 'none' as any },
     }),
   },
   processBtnDisabled: {

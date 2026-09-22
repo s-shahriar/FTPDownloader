@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 14px rgba(38,37,35,0.10)' as any },
-      android: { elevation: 2 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -213,8 +213,8 @@ const styles = StyleSheet.create({
     maxHeight: '70%', paddingBottom: 24,
     borderTopWidth: 1, borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 -12px 50px rgba(38,37,35,0.14)' as any },
-      android: { elevation: 10 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   modalHeader: {

@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 2px 14px rgba(38,37,35,0.10)' as any },
-      android: { elevation: 2 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   iconContainer: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

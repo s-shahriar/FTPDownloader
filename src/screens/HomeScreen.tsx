@@ -292,7 +292,7 @@ export function HomeScreen({ navigation }: any) {
                   setAiModalVisible(true);
                 }}
               >
-                <MaterialIcons name="auto-awesome" size={20} color={COLORS.primaryStrong} />
+                <MaterialIcons name="auto-awesome" size={20} color={COLORS.onAccent} />
               </TouchableOpacity>
             </View>
 
@@ -464,8 +464,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 4px 30px rgba(38,37,35,0.10)' as any },
-      android: { elevation: 4 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   appbarSubtitle: {
@@ -553,23 +553,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 20px rgba(38,37,35,0.14)' as any },
-      android: { elevation: 3 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   aiBtnInline: {
     width: 52,
     height: 52,
     borderRadius: 12,
-    backgroundColor: COLORS.tint,
-    borderWidth: 1,
-    borderColor: COLORS.tintBorder,
+    // Filled, not tinted. A pale wash beside the solid teal search button read
+    // as disabled rather than as the other half of a pair.
+    backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
-      android: { elevation: 4 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   inputWrap: {
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: COLORS.primary,
     ...Platform.select({
-      web: { boxShadow: '0 0 0 3px rgba(53,127,109,0.18)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   inputIcon: { marginRight: 10 },
@@ -615,8 +615,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
-      android: { elevation: 4 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   searchFullButton: {
@@ -628,8 +628,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 8,
     ...Platform.select({
-      web: { boxShadow: '0 4px 22px rgba(53,127,109,0.30)' as any },
-      android: { elevation: 4 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   searchFullButtonText: {
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
     ...Platform.select({
-      web: { boxShadow: '0 -4px 24px rgba(38,37,35,0.10)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   downloadsCta: {
@@ -677,8 +677,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(196,136,63,0.36)' as any },
-      android: { elevation: 6 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   downloadsCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onAccent, letterSpacing: 0.3 },
@@ -692,8 +692,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     ...Platform.select({
-      web: { boxShadow: '0 4px 26px rgba(53,127,109,0.30)' as any },
-      android: { elevation: 6 },
+      web: { boxShadow: 'none' as any },
+      android: { elevation: 0 },
     }),
   },
   srtCtaText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     ...Platform.select({
-      web: { boxShadow: '0 -12px 50px rgba(38,37,35,0.14)' as any },
+      web: { boxShadow: 'none' as any },
     }),
   },
   historyModalHeader: {

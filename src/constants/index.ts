@@ -226,57 +226,61 @@ export const DOWNLOAD_CONFIG = {
 };
 
 export const COLORS = {
-  // Warm, light palette — the same system as Magpie (cream ground, ink text,
-  // a single accent doing the work), shifted from coral to teal so the two
-  // apps read as siblings rather than copies.
+  // Same system as Magpie — one accent, ink text, quiet ground — but its own
+  // hue family. Magpie is warm cream and coral; this is a cool porcelain with
+  // deep teal, so the two are recognisably related without being the same
+  // screen painted twice.
+  //
+  // Depth comes from the card sitting lighter than the ground, not from
+  // outlines and shadows. Borders are therefore off by default.
 
   // Brand
-  primary: '#6FC3AE',        // teal: accent chips, active states, progress
-  primaryStrong: '#357F6D',  // deep teal: filled surfaces that carry light text
-  secondary: '#4E9E89',      // mid teal
-  accent: '#E0A45C',         // warm sand, for the Downloads CTA
-  accentAlt: '#5FA8C4',      // muted blue, secondary accent
-  accentDark: '#C4883F',     // sand, darker
+  primary: '#3F9E88',        // teal: active states, progress, icons on tint
+  primaryStrong: '#2C6F5F',  // deep teal: filled buttons
+  secondary: '#4E9E89',
+  accent: '#DE9A4C',         // amber-sand: the second, warmer action
+  accentAlt: '#5B93A8',
+  accentDark: '#BE7F36',
 
-  // Text that sits *on* a filled brand surface. These are light, warm fills,
-  // so white fails contrast on all three (2.1:1 on primary); ink passes.
-  onPrimary: '#13221E',
-  onAccent: '#2B1D0D',
+  // Text on a filled brand surface.
+  onPrimary: '#F4FAF8',      // deep teal is dark enough to carry light text
+  onAccent: '#2A1C0C',
 
-  // Backgrounds
-  background: '#F1EFE9',     // warm cream
-  surface: '#F1EFE9',
-  card: '#FCFAF7',           // raised card
-  card2: '#F6F3ED',          // elevated / action background
-  inputBg: '#FCFAF7',
-  border: 'rgba(38,37,35,0.12)',
+  // Backgrounds — cool porcelain, not cream
+  background: '#E8EDEC',
+  surface: '#E8EDEC',
+  card: '#F8FBF9',          // near-white, faintly cool
+  card2: '#F1F5F3',
+  inputBg: '#F8FBF9',
 
-  // Text — ink on cream, not white on navy
-  text: '#262523',
-  textSecondary: '#6B655D',
-  textDim: '#A09990',
+  // Off by default: the card already separates itself from the ground.
+  border: 'transparent',
+  // For the rare place a real line is wanted.
+  divider: 'rgba(30,42,40,0.10)',
+
+  // Text — cool ink
+  text: '#1E2A28',
+  textSecondary: '#5C6B68',
+  textDim: '#94A3A0',
 
   // Status
-  error: '#C5533F',
-  success: '#4E8B62',
-  warning: '#D99A3A',
-  info: '#357F6D',
+  error: '#C0533F',
+  success: '#3F8B64',
+  warning: '#D09338',
+  info: '#2C6F5F',
 
-  // Light fills. Every tint in the app comes from here — previously these were
-  // hand-written indigo rgba() left over from the dark scheme, which is why
-  // chips and badges read lavender on the cream ground.
-  tint: 'rgba(111,195,174,0.16)',        // subtle teal fill
-  tintStrong: 'rgba(111,195,174,0.26)',  // chip / badge fill
-  tintBorder: 'rgba(53,127,109,0.22)',   // hairline on a tint
-  sandTint: 'rgba(224,164,92,0.16)',
-  sandTintStrong: 'rgba(224,164,92,0.24)',
-  errorTint: 'rgba(197,83,63,0.10)',
+  // Light fills.
+  tint: 'rgba(63,158,136,0.14)',
+  tintStrong: 'rgba(63,158,136,0.22)',
+  tintBorder: 'transparent',
+  sandTint: 'rgba(222,154,76,0.16)',
+  sandTintStrong: 'rgba(222,154,76,0.24)',
+  errorTint: 'rgba(192,83,63,0.10)',
 
-  // Soft tints, replacing the old neon glows: on a light ground a glow reads
-  // as grime, so these are used as gentle fills and shadows instead.
-  blueGlow: 'rgba(111,195,174,0.22)',
-  amberGlow: 'rgba(224,164,92,0.24)',
-  cyanGlow: 'rgba(95,168,196,0.18)',
+  // Kept for call sites that still reference them; deliberately faint.
+  blueGlow: 'rgba(63,158,136,0.18)',
+  amberGlow: 'rgba(222,154,76,0.20)',
+  cyanGlow: 'rgba(91,147,168,0.16)',
 };
 
 export const STORAGE_KEYS = {
