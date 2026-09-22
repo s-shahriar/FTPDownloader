@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
-    color: '#22d3ee',
+    color: COLORS.primaryStrong,
     marginBottom: 4,
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   },
   connText: {
     fontSize: 10,
-    color: '#22d3ee',
+    color: COLORS.primaryStrong,
     fontWeight: '500',
     letterSpacing: 0.5,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   searchFullButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
+    color: COLORS.onPrimary,
     letterSpacing: 0.3,
   },
 
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: '#1a0e00', letterSpacing: 0.3 },
+  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onAccent, letterSpacing: 0.3 },
   srtCta: {
     flex: 1,
     flexDirection: 'row',
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-  srtCtaText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  srtCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onPrimary, letterSpacing: 0.3 },
 
   // ── History Modal ──
   modalOverlay: {

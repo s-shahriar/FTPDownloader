@@ -19,7 +19,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/',
     server: 'http://172.16.50.7',
     icon: 'apps',
-    color: '#818cf8',
+    color: '#6F78D2',
     type: 'all',
     // Server 8 only hosts games and software, so it is left out
     searchScopes: [
@@ -35,7 +35,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/English Movies',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#FF6B6B',
+    color: '#CD6060',
     type: 'movie_merged',
     yearFormat: 'paren',
     mergedSources: [
@@ -59,7 +59,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/Hindi Movies',
     server: 'http://172.16.50.14',
     icon: 'movie-creation',
-    color: '#4ECDC4',
+    color: '#2E918A',
     type: 'movie_with_year',
     yearFormat: 'paren',
   },
@@ -69,7 +69,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/SOUTH INDIAN MOVIES/South Movies',
     server: 'http://172.16.50.14',
     icon: 'movie',
-    color: '#F38181',
+    color: '#B8743C',
     type: 'movie_merged',
     yearFormat: 'bare',
     mergedSources: [
@@ -93,7 +93,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/Animation Movies',
     server: 'http://172.16.50.14',
     icon: 'animation',
-    color: '#AA96DA',
+    color: '#8B70CD',
     type: 'movie_merged',
     yearFormat: 'paren',
     mergedSources: [
@@ -117,7 +117,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-12/TV-WEB-Series',
     server: 'http://172.16.50.12',
     icon: 'tv',
-    color: '#FCBAD3',
+    color: '#CB5C86',
     type: 'tv_series',
   },
   KOREAN_TV_SERIES: {
@@ -126,7 +126,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-14/KOREAN TV & WEB Series',
     server: 'http://172.16.50.14',
     icon: 'tv',
-    color: '#A8D8EA',
+    color: '#368AAA',
     type: 'korean_tv_series',
   },
   KOREAN_MOVIES: {
@@ -135,7 +135,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Korean Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#FFB6B9',
+    color: '#CC5F63',
     type: 'movie_flat',
   },
   JAPANESE_MOVIES: {
@@ -144,7 +144,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Japanese Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#FAE3D9',
+    color: '#C46A43',
     type: 'movie_flat',
   },
   CHINESE_MOVIES: {
@@ -153,7 +153,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies/Chinese Language',
     server: 'http://172.16.50.7',
     icon: 'movie',
-    color: '#BBDED6',
+    color: '#458D7D',
     type: 'movie_flat',
   },
   ANIME_CARTOON: {
@@ -162,7 +162,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-9/Anime & Cartoon TV Series',
     server: 'http://172.16.50.9',
     icon: 'tv',
-    color: '#FF9AA2',
+    color: '#CD6169',
     type: 'anime_series',
   },
   FOREIGN_MOVIES: {
@@ -171,7 +171,7 @@ export const CATEGORIES: Record<string, Category> = {
     path: '/DHAKA-FLIX-7/Foreign Language Movies',
     server: 'http://172.16.50.7',
     icon: 'public',
-    color: '#61C0BF',
+    color: '#388D8C',
     type: 'movie_foreign',
     excludeSubfolders: ['Chinese Language', 'Japanese Language', 'Korean Language'],
   },
@@ -226,37 +226,47 @@ export const DOWNLOAD_CONFIG = {
 };
 
 export const COLORS = {
+  // Warm, light palette — the same system as Magpie (cream ground, ink text,
+  // a single accent doing the work), shifted from coral to teal so the two
+  // apps read as siblings rather than copies.
+
   // Brand
-  primary: '#818cf8',        // indigo-400 (bright for dark bg)
-  primaryStrong: '#4f46e5',  // indigo-600: filled surfaces with white text (#818cf8 is too light for it)
-  secondary: '#a78bfa',      // violet-400
-  accent: '#e8a020',         // amber/gold (kept for Downloads CTA)
-  accentAlt: '#22d3ee',      // cyan (secondary accent)
-  accentDark: '#d4881a',     // amber darker
+  primary: '#6FC3AE',        // teal: accent chips, active states, progress
+  primaryStrong: '#357F6D',  // deep teal: filled surfaces that carry light text
+  secondary: '#4E9E89',      // mid teal
+  accent: '#E0A45C',         // warm sand, for the Downloads CTA
+  accentAlt: '#5FA8C4',      // muted blue, secondary accent
+  accentDark: '#C4883F',     // sand, darker
+
+  // Text that sits *on* a filled brand surface. These are light, warm fills,
+  // so white fails contrast on all three (2.1:1 on primary); ink passes.
+  onPrimary: '#13221E',
+  onAccent: '#2B1D0D',
 
   // Backgrounds
-  background: '#04061a',     // very deep navy
-  surface: '#0a0e28',        // dark navy surface
-  card: '#0f1433',           // card bg
-  card2: '#141a3c',          // elevated/action bg
-  inputBg: '#0f1433',        // input field background
-  border: 'rgba(99,102,241,0.16)',
+  background: '#F1EFE9',     // warm cream
+  surface: '#F1EFE9',
+  card: '#FCFAF7',           // raised card
+  card2: '#F6F3ED',          // elevated / action background
+  inputBg: '#FCFAF7',
+  border: 'rgba(38,37,35,0.12)',
 
-  // Text
-  text: '#ecedf8',           // near white
-  textSecondary: '#7879c0',  // muted indigo
-  textDim: '#4a4e80',        // very muted
+  // Text — ink on cream, not white on navy
+  text: '#262523',
+  textSecondary: '#6B655D',
+  textDim: '#A09990',
 
   // Status
-  error: '#f43f5e',          // rose
-  success: '#22c55e',        // green
-  warning: '#f59e0b',        // amber
-  info: '#818cf8',           // indigo
+  error: '#C5533F',
+  success: '#4E8B62',
+  warning: '#D99A3A',
+  info: '#357F6D',
 
-  // Glow / shadow helpers
-  blueGlow: 'rgba(129,140,248,0.28)',
-  amberGlow: 'rgba(232,160,32,0.30)',
-  cyanGlow: 'rgba(34,211,238,0.22)',
+  // Soft tints, replacing the old neon glows: on a light ground a glow reads
+  // as grime, so these are used as gentle fills and shadows instead.
+  blueGlow: 'rgba(111,195,174,0.22)',
+  amberGlow: 'rgba(224,164,92,0.24)',
+  cyanGlow: 'rgba(95,168,196,0.18)',
 };
 
 export const STORAGE_KEYS = {

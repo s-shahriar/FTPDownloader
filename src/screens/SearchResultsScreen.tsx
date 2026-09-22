@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    color: '#22d3ee',
+    color: COLORS.primaryStrong,
     marginBottom: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: '#1a0e00', letterSpacing: 0.3 },
+  downloadsCtaText: { fontSize: 14, fontWeight: '700', color: COLORS.onAccent, letterSpacing: 0.3 },
 
   // ── Empty state ──
   emptyState: {

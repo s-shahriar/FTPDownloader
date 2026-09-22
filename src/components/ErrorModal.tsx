@@ -83,15 +83,15 @@ export function ErrorModal({ visible, error, onClose }: ErrorModalProps) {
   const getErrorColor = () => {
     switch (error.type) {
       case 'network':
-        return '#ff6b6b';
+        return COLORS.error;
       case 'cors':
-        return '#ffa726';
+        return COLORS.warning;
       case 'timeout':
-        return '#ffca28';
+        return COLORS.accent;
       case 'server':
-        return '#ef5350';
+        return COLORS.error;
       default:
-        return '#e53935';
+        return COLORS.error;
     }
   };
 
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1a0e00', // dark: the button takes the error color, which can be yellow or orange
+    color: COLORS.onAccent, // the button takes the severity colour, which may be sand or amber
     letterSpacing: 0.3,
   },
 });

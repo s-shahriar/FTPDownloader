@@ -9,10 +9,10 @@
     "splash": {
       "image": "./assets/transparent-splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#04061a"
+      "backgroundColor": "#F1EFE9"
     },
-    "backgroundColor": "#04061a",
-    "primaryColor": "#818cf8",
+    "backgroundColor": "#F1EFE9",
+    "primaryColor": "#6FC3AE",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -27,7 +27,7 @@
       "splash": {
         "image": "./assets/transparent-splash.png",
         "resizeMode": "contain",
-        "backgroundColor": "#f2f4f8"
+        "backgroundColor": "#F1EFE9"
       },
       "permissions": [
         "android.permission.INTERNET",
@@ -42,7 +42,7 @@
         "android.permission.POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#6FC3AE",
         "foregroundImage": "./assets/icon-foreground.png",
         "monochromeImage": "./assets/monochrome-icon.png"
       },

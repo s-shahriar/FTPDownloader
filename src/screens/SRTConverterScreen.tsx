@@ -370,7 +370,7 @@ const stepStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#fff',
+    color: COLORS.onPrimary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   processBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: COLORS.onPrimary,
     letterSpacing: 0.3,
   },
   cancelBtn: {
@@ -593,11 +593,11 @@ const styles = StyleSheet.create({
 
   // Log
   logContainer: {
-    backgroundColor: '#0f1117',
+    backgroundColor: COLORS.card2,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#2a2d3a',
+    borderColor: COLORS.border,
   },
   logHeader: {
     flexDirection: 'row',
@@ -606,13 +606,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2d3a',
+    borderBottomColor: COLORS.border,
   },
   logTitle: {
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 1.5,
-    color: '#6b7394',
+    color: COLORS.textDim,
     textTransform: 'uppercase',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   },
   logText: {
     fontSize: 12,
-    color: '#a8d8a8',
+    color: COLORS.primaryStrong,
     lineHeight: 18,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
